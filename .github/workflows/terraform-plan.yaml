@@ -182,56 +182,18 @@ jobs:
             
             let commentBody = `### Terraform Plan 결과 요약\n\n`;
             
-            // 현재 작업 디렉토리의 내용 확인
-            console.log(`현재 작업 디렉토리: ${process.cwd()}`);
-            console.log(`작업 디렉토리 내용: ${fs.readdirSync('.').join(', ')}`);
-            
-            // 가능한 여러 파일 경로 시도
-            const possiblePaths = [
-              `plan-output-${targetPath.replace(/\//g, '-')}/plan_output.txt`,
-              `plan-output-${targetPath}/plan_output.txt`,
-              `${targetPath}/plan_output.txt`,
-              `terraform/plan-output-${targetPath.replace(/\//g, '-')}/plan_output.txt`,
-              `terraform/${targetPath}/plan_output.txt`
-            ];
+            const filePath = `terraform/${targetPath}/plan_output.txt`
             
             let foundFile = false;
             let planOutput = '';
             let usedPath = '';
             
-            // 가능한 모든 경로 시도
-            for (const testPath of possiblePaths) {
-              console.log(`파일 경로 시도: ${testPath}`);
-              if (fs.existsSync(testPath)) {
-              console.log(`파일 발견: ${testPath}`);
-                foundFile = true;
-                usedPath = testPath;
-                planOutput = fs.readFileSync(testPath, 'utf8');
-                break;
-              }
+            if (fs.existsSync(filePath)) {
+              foundFile = true;
+              usedPath = testPath;
+              planOutput = fs.readFileSync(testPath, 'utf8');
             }
             
-            // 찾지 못했다면 계획 결과 디렉토리 검색
-            if (!foundFile) {
-              console.log('계획 결과 디렉토리 검색 중...');
-              const planDirs = fs.readdirSync('.').filter(item => item.startsWith('plan-output'));
-              console.log(`발견된 계획 디렉토리: ${planDirs.join(', ')}`);
-            
-              for (const dir of planDirs) {
-                console.log(`디렉토리 내용 확인: ${dir}`);
-                const dirContents = fs.readdirSync(dir).join(', ');
-                console.log(`${dir} 내용: ${dirContents}`);
-            
-                if (fs.existsSync(`${dir}/plan_output.txt`)) {
-                  console.log(`파일 발견: ${dir}/plan_output.txt`);
-                  foundFile = true;
-                  usedPath = `${dir}/plan_output.txt`;
-                  planOutput = fs.readFileSync(usedPath, 'utf8');
-                  break;
-                }
-              }
-            }
-
             if (foundFile) {
               // Terraform 출력 형식에 맞게 조건 변경
               const summary = planOutput.includes('No changes')
@@ -247,7 +209,6 @@ jobs:
               commentBody += `*파일 경로: ${usedPath}*\n\n`;
             } else {
               commentBody += `**${targetPath}**: ❓ 플랜 결과 없음 (파일을 찾을 수 없음)\n\n`;
-              commentBody += `*시도한 경로: ${possiblePaths.join(', ')}*\n\n`;
             } 
 
             commentBody += `*Pushed by: @${actor}, Action: \`${eventName}\`*`;
