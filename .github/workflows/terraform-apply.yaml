@@ -41,7 +41,7 @@ jobs:
             MODE_MESSAGE="Running apply on all terraform directories"
             TITLE="🌕 Full Terraform Plan"
           else
-            DIRS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+            DIRS=$(git diff --name-only HEAD^...HEAD | \
               xargs -I {} dirname {} | \
               grep "^terraform/" | \
               awk -F/ '{if(NF>=5) print $1"/"$2"/"$3"/"$4"/"$5}' | \
