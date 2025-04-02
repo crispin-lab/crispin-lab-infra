@@ -175,10 +175,15 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             
+            // GitHub Actions 변수들을 JavaScript 변수로 가져오기
+            const targetPath = '${{ matrix.target_path }}';
+            const actor = '${{ github.actor }}';
+            const eventName = '${{ github.event_name }}';
+            
             let commentBody = `### Terraform Plan 결과 요약\n\n`;
             
-            const sanitizedDir = ${{ matrix.target_path }}.replace(/\//g, '-');
-            const planOutputFile = `plan-output-${{ matrix.target_path }}/plan_output.txt`;
+            const sanitizedDir = targetPath.replace(/\//g, '-');
+            const planOutputFile = `plan-output-${targetPath}/plan_output.txt`;
             
             if (fs.existsSync(planOutputFile)) {
               const planOutput = fs.readFileSync(planOutputFile, 'utf8');
@@ -188,13 +193,13 @@ jobs:
                   ? '❌ 오류 발생' 
                   : '🔄 변경 사항 있음';
             
-              commentBody += `**${{ matrix.target_path }}**: ${summary}\n\n`;
+              commentBody += `**${targetPath}**: ${summary}\n\n`;
               commentBody += `<details><summary>세부 플랜 보기</summary>\n\n\`\`\`terraform\n${planOutput}\n\`\`\`\n\n</details>\n\n`;
             } else {
-              commentBody += `**${{ matrix.target_path }}**: ❓ 플랜 결과 없음\n\n`;
+              commentBody += `**${targetPath}**: ❓ 플랜 결과 없음\n\n`;
             }
-
-            commentBody += `*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            
+            commentBody += `*Pushed by: @${actor}, Action: \`${eventName}\`*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
