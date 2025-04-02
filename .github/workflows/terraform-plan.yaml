@@ -190,7 +190,7 @@ jobs:
             
             if (fs.existsSync(filePath)) {
               foundFile = true;
-              planOutput = fs.readFileSync(foundFile, 'utf8');
+              planOutput = fs.readFileSync(filePath, 'utf8');
             }
             
             if (foundFile) {
