@@ -182,47 +182,76 @@ jobs:
             
             let commentBody = `### Terraform Plan 결과 요약\n\n`;
             
-            // 디버깅을 위한 로그 추가
-            console.log(`대상 경로: ${targetPath}`);
+            // 현재 작업 디렉토리의 내용 확인
+            console.log(`현재 작업 디렉토리: ${process.cwd()}`);
+            console.log(`작업 디렉토리 내용: ${fs.readdirSync('.').join(', ')}`);
             
-            // 파일명에 경로 슬래시를 대시로 변환
-            const sanitizedDir = targetPath.replace(/\//g, '-');
-            const planOutputFile = `plan-output-${sanitizedDir}/plan_output.txt`;
+            // 가능한 여러 파일 경로 시도
+            const possiblePaths = [
+              `plan-output-${targetPath.replace(/\//g, '-')}/plan_output.txt`,
+              `plan-output-${targetPath}/plan_output.txt`,
+              `${targetPath}/plan_output.txt`,
+              `terraform/plan-output-${targetPath.replace(/\//g, '-')}/plan_output.txt`,
+              `terraform/${targetPath}/plan_output.txt`
+            ];
+            
+            let foundFile = false;
+            let planOutput = '';
+            let usedPath = '';
+            
+            // 가능한 모든 경로 시도
+            for (const testPath of possiblePaths) {
+              console.log(`파일 경로 시도: ${testPath}`);
+              if (fs.existsSync(testPath)) {
+              console.log(`파일 발견: ${testPath}`);
+                foundFile = true;
+                usedPath = testPath;
+                planOutput = fs.readFileSync(testPath, 'utf8');
+                break;
+              }
+            }
+            
+            // 찾지 못했다면 계획 결과 디렉토리 검색
+            if (!foundFile) {
+              console.log('계획 결과 디렉토리 검색 중...');
+              const planDirs = fs.readdirSync('.').filter(item => item.startsWith('plan-output'));
+              console.log(`발견된 계획 디렉토리: ${planDirs.join(', ')}`);
+            
+              for (const dir of planDirs) {
+                console.log(`디렉토리 내용 확인: ${dir}`);
+                const dirContents = fs.readdirSync(dir).join(', ');
+                console.log(`${dir} 내용: ${dirContents}`);
+            
+                if (fs.existsSync(`${dir}/plan_output.txt`)) {
+                  console.log(`파일 발견: ${dir}/plan_output.txt`);
+                  foundFile = true;
+                  usedPath = `${dir}/plan_output.txt`;
+                  planOutput = fs.readFileSync(usedPath, 'utf8');
+                  break;
+                }
+              }
+            }
 
-            console.log(`찾는 파일: ${planOutputFile}`);
-            console.log(`파일 존재 여부: ${fs.existsSync(planOutputFile)}`);
-            
-            if (fs.existsSync(planOutputFile)) {
-              const planOutput = fs.readFileSync(planOutputFile, 'utf8');
-              console.log(`파일 내용 일부: ${planOutput.substring(0, 100)}...`);
-            
+            if (foundFile) {
               // Terraform 출력 형식에 맞게 조건 변경
               const summary = planOutput.includes('No changes')
-              ? '✅ 변경 사항 없음'
-              : planOutput.includes('Error:')
-              ? '❌ 오류 발생'
-              : planOutput.includes('Changes to Outputs:') || planOutput.includes('Plan:')
-              ? '🔄 변경 사항 있음'
-              : '🔄 변경 사항 있음';
+                ? '✅ 변경 사항 없음'
+                : planOutput.includes('Error:')
+                  ? '❌ 오류 발생'
+                  : planOutput.includes('Changes to Outputs:') || planOutput.includes('Plan:')
+                    ? '🔄 변경 사항 있음'
+                    : '🔄 변경 사항 있음';
 
               commentBody += `**${targetPath}**: ${summary}\n\n`;
               commentBody += `<details><summary>세부 플랜 보기</summary>\n\n\`\`\`terraform\n${planOutput}\n\`\`\`\n\n</details>\n\n`;
+              commentBody += `*파일 경로: ${usedPath}*\n\n`;
             } else {
-            // 디버깅을 위해 디렉토리 내용 목록 추가
-            const dirPath = path.dirname(planOutputFile);
-            let dirContents = '디렉토리가 존재하지 않음';
-            
-            if (fs.existsSync(dirPath)) {
-            dirContents = fs.readdirSync(dirPath).join(', ');
-            }
-
-            commentBody += `**${targetPath}**:
-              ❓ 플랜 결과 없음 (디버깅 정보:
-                ${dirPath} 내용: ${dirContents})\n\n`;
-            }
+              commentBody += `**${targetPath}**: ❓ 플랜 결과 없음 (파일을 찾을 수 없음)\n\n`;
+              commentBody += `*시도한 경로: ${possiblePaths.join(', ')}*\n\n`;
+            } 
 
             commentBody += `*Pushed by: @${actor}, Action: \`${eventName}\`*`;
-                                         
+            
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
