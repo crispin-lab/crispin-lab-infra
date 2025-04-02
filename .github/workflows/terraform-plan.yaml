@@ -48,7 +48,11 @@ jobs:
             MODE_MESSAGE="Running apply on all terraform directories"
             TITLE="🌕 Full Terraform Plan"
           else
-            DIRS=$(for file in $(git diff --cached --name-only); do dirname $file | cut -d '/' -f-5 | grep terraform; done | sort | uniq)
+            DIRS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+              xargs -I {} dirname {} | \
+              grep "^terraform/" | \
+              awk -F/ '{if(NF>=5) print $1"/"$2"/"$3"/"$4"/"$5}' | \
+              sort -u)
             MODE_MESSAGE="Running apply on changed directories only"
             TITLE="🌗 Changed Terraform Directories"
           fi          
@@ -88,7 +92,7 @@ jobs:
     name: "🥽 (${{ matrix.target || 'none-target' }})"
     runs-on: ubuntu-latest
     needs: init
-    if: "join(fromJSON(needs.init.outputs.terraform_targets), '') != ''"
+    if: fromJSON(needs.init.outputs.terraform_targets) != '[]' && join(fromJSON(needs.init.outputs.terraform_targets), '') != ''
     strategy:
       matrix:
         include: ${{ fromJson(needs.init.outputs.terraform_targets) }}
