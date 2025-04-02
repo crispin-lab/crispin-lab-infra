@@ -152,7 +152,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Terraform Plan
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: terraform-plan-${{ matrix.target_path }}
           path: ${{ matrix.target_path }}/tfplan
@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload Plan Output
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: plan-output-${{ matrix.target_path }}
           path: ${{ matrix.target_path }}/plan_output.txt
