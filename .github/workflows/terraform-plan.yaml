@@ -1,0 +1,200 @@
+name: "📝TF Plan"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "terraform/**"
+      - ".github/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      terraform-targets: ${{ steps.tf-targets.outputs.terraform_targets }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "🔎 terraform targets"
+        id: tf-targets
+        run: |
+          # .github/** 디렉토리 파일 변경 확인
+          GITHUB_FILES_CHANGED=$(git diff --cached --name-only | grep "^.github/" || echo)
+          if [ ! -z "$GITHUB_FILES_CHANGED" ]; then
+            echo "GitHub workflow files changed - processing all directories"
+            PROCESS_ALL=true
+          elif [ $GITHUB_EVENT_NAME -eq "workflow_dispatch" ]; then
+            echo "Running in dispatch mode - processing all directories"
+            PROCESS_ALL=true
+          else
+            echo "Running in push mode - processing only changed directories"
+            PROCESS_ALL=false
+          fi
+          
+          # Target Dirs 체크
+          if [ "$PROCESS_ALL" = "true" ]; then
+            # 모든 terraform 디렉토리 찾기
+            DIRS=$(find terraform -type d -mindepth 4 -maxdepth 4)
+            MODE_MESSAGE="Running apply on all terraform directories"
+            TITLE="🌕 Full Terraform Plan"
+          else
+            DIRS=$(for file in $(git diff --cached --name-only); do dirname $file | cut -d '/' -f-5 | grep terraform; done | sort | uniq)
+            MODE_MESSAGE="Running apply on changed directories only"
+            TITLE="🌗 Changed Terraform Directories"
+          fi          
+          
+          # Target Dirs 출력
+          echo "Target directories:"
+          echo "$DIRS"
+          
+          echo "[]" > targets.json
+          
+          while read -r dir; do
+            if [[ $dir =~ ^terraform/([^/]+)/([^/]+)/([^/]+)/([^/]+)$ ]]; then
+              provider="${BASH_REMATCH[1]}"
+              account_name="${BASH_REMATCH[2]}"
+              env="${BASH_REMATCH[3]}"
+              region="${BASH_REMATCH[4]}"
+          
+              target="$provider/$account_name/$env/$region_code"
+              json_str="{\"target\":\"$target\",\"target_path\":\"$dir\",\"provider\":\"$provider\",\"account_name\":\"$account_name\",\"env\":\"$env\",\"region\":\"$region\"}"
+          
+              if [ "$(cat targets.json)" = "[]" ]; then
+                echo "[$json_str]" > targets.json
+              else
+                jq ". + [$json_str]" targets.json > targets.tmp && mv targets.tmp targets.json
+              fi
+            fi
+          done <<< "$DIRS"
+          
+          # GitHub Actions output 설정
+          if [ ! -s targets.json ] || [ "$(cat targets.json)" = "[]" ]; then
+            echo "terraform_targets=[]" >> $GITHUB_OUTPUT
+          else
+            echo "terraform_targets=$(jq -c . targets.json)" >> $GITHUB_OUTPUT
+          fi
+
+  terraform-plan:
+    name: "🥽 (${{matrix.target}})"
+    runs-on: ubuntu-latest
+    needs: init
+    if: "join(fromJSON(needs.init.outputs.terraform_targets), '') != ''"
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.init.outputs.terraform_targets) }}
+      fail-fast: false
+    defaults:
+      run:
+        working-directory: '${{ matrix.target_path }}'
+    env:
+      TARGET: ${{ matrix.target }}
+      TARGET_PATH: ${{ matrix.target_path }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: int128/hide-comment-action@v1
+        name: Hide Existing Comments
+        env:
+          TARGET: '${{ matrix.target }}'
+        with:
+          authors: "github-actions[bot]"
+          starts-with: |
+            <!-- Target Directory: ${{ matrix.target }} -->
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        id: fmt
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -no-color -input=false -out=tfplan
+        continue-on-error: true
+
+      - name: Upload Terraform Plan
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan-${{ matrix.target_path }}
+          path: ${{ matrix.target_path }}/tfplan
+          retention-days: 5
+
+      - name: Store Plan Output
+        if: github.event_name == 'pull_request'
+        run: |
+          cd $WORKING_DIR
+          terraform show -no-color tfplan > plan_output.txt
+
+      - name: Upload Plan Output
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v3
+        with:
+          name: plan-output-${{ matrix.target_path }}
+          path: ${{ matrix.target_path }}/plan_output.txt
+
+      - name: Create PR Comment
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            let commentBody = `### Terraform Plan 결과 요약\n\n`;
+            
+            const sanitizedDir = ${{ matrix.target_path }}.replace(/\//g, '-');
+            const planOutputFile = `plan-output-${{ matrix.target_path }}/plan_output.txt`;
+            
+            if (fs.existsSync(planOutputFile)) {
+              const planOutput = fs.readFileSync(planOutputFile, 'utf8');
+              const summary = planOutput.includes('No changes') 
+                ? '✅ 변경 사항 없음' 
+                : planOutput.includes('Error:') 
+                  ? '❌ 오류 발생' 
+                  : '🔄 변경 사항 있음';
+            
+              commentBody += `**${{ matrix.target_path }}**: ${summary}\n\n`;
+              commentBody += `<details><summary>세부 플랜 보기</summary>\n\n\`\`\`terraform\n${planOutput}\n\`\`\`\n\n</details>\n\n`;
+            } else {
+              commentBody += `**${{ matrix.target_path }}**: ❓ 플랜 결과 없음\n\n`;
+            }
+
+            commentBody += `*Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+  check-results:
+    needs:
+      - init
+      - terraform-plan
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check Jobs Status
+        id: check
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "Some terraform plans failed"
+            exit 1
+          else
+            echo "All terraform plans succeeded"
+          fi
