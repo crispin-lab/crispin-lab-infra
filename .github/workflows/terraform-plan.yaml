@@ -154,7 +154,7 @@ jobs:
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-${{ matrix.provider }}-${{ metrix.env }}-${{ metrix.region }}
+          name: terraform-plan-${{ matrix.provider }}-${{ matrix.env }}-${{ matrix.region }}
           path: ${{ matrix.target_path }}/tfplan
           retention-days: 5
 
@@ -168,7 +168,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: plan-output-${{ matrix.provider }}-${{ metrix.env }}-${{ metrix.region }}
+          name: plan-output-${{ matrix.provider }}-${{ matrix.env }}-${{ matrix.region }}
           path: ${{ matrix.target_path }}/plan_output.txt
 
       - name: Create PR Comment
