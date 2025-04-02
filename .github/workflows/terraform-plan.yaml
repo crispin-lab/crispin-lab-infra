@@ -159,13 +159,9 @@ jobs:
           retention-days: 5
 
       - name: Store Plan Output
-        if: github.event_name == 'pull_request'
-        run: |
-          cd $WORKING_DIR
-          terraform show -no-color tfplan > plan_output.txt
+        run: terraform show -no-color tfplan > plan_output.txt
 
       - name: Upload Plan Output
-        if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: plan-output-${{ matrix.provider }}-${{ matrix.env }}-${{ matrix.region }}
