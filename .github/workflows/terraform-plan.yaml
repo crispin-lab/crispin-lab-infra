@@ -19,7 +19,7 @@ jobs:
   init:
     runs-on: ubuntu-latest
     outputs:
-      terraform-targets: ${{ steps.tf-targets.outputs.terraform_targets }}
+      terraform_targets: ${{ steps.tf-targets.outputs.terraform_targets }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -100,9 +100,9 @@ jobs:
             if [ "$(cat targets.json)" = "[]" ]; then
               echo "ℹ️ No terraform directories to process"
             else
-              echo "| Provider | Product | Target | Account ID | Environment | Region | Region Code |"
+              echo "| Provider | Target | TargetPath | Environment | Region |"
               echo "|----------|---------|---------|------------|-------------|---------|-------------|"
-              jq -r '.[] | "| \(.provider) | \(.product) | \(.target) | \(.account_id) | \(.env) | \(.region) | \(.region_code) |"' targets.json
+              jq -r '.[] | "| \(.provider) | \(.target) | \(.target_path) | \(.env) | \(.region) |"' targets.json
             fi
           } >> $GITHUB_STEP_SUMMARY
 
