@@ -182,11 +182,10 @@ jobs:
             
             let commentBody = `### Terraform Plan 결과 요약\n\n`;
             
-            const filePath = `terraform/${targetPath}/plan_output.txt`
+            const filePath = `${targetPath}/plan_output.txt`
             
             let foundFile = false;
             let planOutput = '';
-            let usedPath = '';
             
             if (fs.existsSync(filePath)) {
               foundFile = true;
