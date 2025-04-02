@@ -1,0 +1,115 @@
+repos:
+  - repo: local
+    hooks:
+      - id: format-and-generate-docs-for-terraform
+        name: format-and-generate-docs-for-terraform
+        entry: |
+          /bin/bash -c "\
+            # Get list of directories with changed Terraform files
+            DIRS=$(for file in $(git diff --cached --name-only); do dirname $file | cut -d '/' -f-5 | grep terraform; done | sort | uniq)
+          
+            if [ -z \"$DIRS\" ]; then
+              echo 'No Terraform files changed.'
+              exit 0
+            fi
+          
+            # Check if tfsec is installed
+            if ! command -v tfsec &> /dev/null; then
+              echo '==================================================================='
+              echo 'ERROR: tfsec is not installed. Security checks are mandatory.'
+              echo ''
+              echo 'Please install tfsec using one of the following methods:'
+              echo ''
+              echo '- Linux/macOS:'
+              echo '  brew install tfsec'
+              echo '  or'
+              echo '  curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install.sh | bash'
+              echo ''
+              echo '- Windows:'
+              echo '  choco install tfsec'
+              echo '  or'
+              echo '  scoop install tfsec'
+              echo ''
+              echo 'After installing, run git commit again to continue.'
+              echo '==================================================================='
+              exit 10
+            fi
+          
+            for d in $DIRS; do
+              echo 'Processing directory: '$d
+          
+              # Create cache directory if it doesn't exist
+              CACHE_DIR=\"$HOME/.terraform-pre-commit-cache\"
+              mkdir -p \"$CACHE_DIR\"
+          
+              # Calculate hash of provider configurations and terraform version
+              CONFIG_HASH=$(find $d -name \"*.tf\" | xargs cat | grep -E 'required_providers|required_version' | md5sum | cut -d' ' -f1)
+              CACHE_FILE=\"$CACHE_DIR/$(echo $d | md5sum | cut -d' ' -f1)\"
+          
+              # Check if we need to run terraform init
+              NEED_INIT=false
+              if [ ! -f \"$CACHE_FILE\" ]; then
+                NEED_INIT=true
+              else
+                STORED_HASH=$(cat \"$CACHE_FILE\")
+                if [ \"$CONFIG_HASH\" != \"$STORED_HASH\" ]; then
+                  NEED_INIT=true
+                fi
+              fi
+          
+              # Initialize terraform if needed
+              if [ \"$NEED_INIT\" = true ]; then
+                echo 'Running terraform init...'
+                terraform -chdir=$d init -input=false -upgrade
+                if [[ $? -ne 0 ]]; then
+                  echo 'terraform init failed!'
+                  exit 1
+                fi
+                # Store hash for cache
+                echo \"$CONFIG_HASH\" > \"$CACHE_FILE\"
+              else
+                echo 'Skipping terraform init (no changes detected in provider configuration)'
+              fi
+          
+              # Validate terraform
+              echo 'Running terraform validate...'
+              terraform -chdir=$d validate
+              if [[ $? -ne 0 ]]; then
+                echo 'terraform validate failed!'
+                exit 2
+              fi
+          
+              # Format terraform
+              echo 'Running terraform fmt...'
+              terraform fmt $d
+              if [[ $? -ne 0 ]]; then
+                echo 'terraform fmt failed!'
+                exit 3
+              fi
+          
+              # Run security checks with tfsec
+              echo 'Running security checks with tfsec...'
+              tfsec $d --format=default
+              if [[ $? -ne 0 ]]; then
+                echo 'Security issues found! Please fix them before committing.'
+                exit 5
+              fi
+          
+              # Check directory for documentation
+              mkdir -p $d/modules
+          
+              # Generate documentation with terraform-docs
+              echo 'Running terraform-docs...'
+              terraform-docs markdown table --output-file README.md $d
+              if [[ $? -ne 0 ]]; then
+                echo 'terraform-docs failed!'
+                exit 4
+              fi
+          
+              echo 'Completed processing $d'
+            done
+          "
+        language: system
+        types: [terraform]
+        files: '\.tf$'
+        verbose: true
