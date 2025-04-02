@@ -1,0 +1,359 @@
+name: "🚀TF Apply"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - terraform/**
+      - .github/**
+
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    outputs:
+      terraform_targets: ${{ steps.tf-targets.outputs.terraform_targets }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔎 Terraform Targets
+        id: tf-targets
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Running in scheduled mode - processing all directories"
+            PROCESS_ALL=true
+          else
+            echo "Checking changed files..."
+            GITHUB_FILES_CHANGED=$(git diff --name-only HEAD^...HEAD | grep "^.github/" || echo)
+            if [ ! -z "$GITHUB_FILES_CHANGED" ]; then
+              echo "GitHub workflow files changed - processing all directories"
+              PROCESS_ALL=true
+            else
+              echo "Running in push mode - processing only changed directories"
+              PROCESS_ALL=false
+            fi
+          fi
+          
+          if [ "$PROCESS_ALL" = "true" ]; then
+            DIRS=$(find terraform -type d -mindepth 4 -maxdepth 4)
+            MODE_MESSAGE="Running apply on all terraform directories"
+            TITLE="🌕 Full Terraform Plan"
+          else
+            DIRS=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | \
+              xargs -I {} dirname {} | \
+              grep "^terraform/" | \
+              awk -F/ '{if(NF>=5) print $1"/"$2"/"$3"/"$4"/"$5}' | \
+              sort -u)
+            MODE_MESSAGE="Running apply on changed directories only"
+            TITLE="🌗 Changed Terraform Directories"
+          fi          
+
+          echo "Target directories:"
+          echo "$DIRS"
+          
+          echo "[]" > targets.json
+
+          while read -r dir; do
+            if [[ $dir =~ ^terraform/([^/]+)/([^/]+)/([^/]+)/([^/]+)$ ]]; then
+              provider="${BASH_REMATCH[1]}"
+              account_name="${BASH_REMATCH[2]}"
+              env="${BASH_REMATCH[3]}"
+              region="${BASH_REMATCH[4]}"
+          
+              target="$provider/$account_name/$env/$region"
+              json_str="{\"target\":\"$target\",\"target_path\":\"$dir\",\"provider\":\"$provider\",\"account_name\":\"$account_name\",\"env\":\"$env\",\"region\":\"$region\"}"
+          
+              if [ "$(cat targets.json)" = "[]" ]; then
+                echo "[$json_str]" > targets.json
+              else
+                jq ". + [$json_str]" targets.json > targets.tmp && mv targets.tmp targets.json
+              fi
+            fi
+          done <<< "$DIRS"
+
+          if [ ! -s targets.json ] || [ "$(cat targets.json)" = "[]" ]; then
+            echo "terraform_targets=[]" >> $GITHUB_OUTPUT
+          else
+            echo "terraform_targets=$(jq -c . targets.json)" >> $GITHUB_OUTPUT
+          fi
+          
+          {
+            echo "# $TITLE"
+            echo
+            echo "$MODE_MESSAGE"
+            if [ "$PROCESS_ALL" = "true" ] && [ "${{ github.event_name }}" != "schedule" ]; then
+              echo "**.github/** files changed - running full plan**"
+            fi
+            echo
+            if [ "$(cat targets.json)" = "[]" ]; then
+              echo "ℹ️ No terraform directories to process"
+            else
+              echo "| Provider | Target | TargetPath | Environment | Region |"
+              echo "|----------|---------|---------|------------|-------------|"
+              jq -r '.[] | "| \(.provider) | \(.target) | \(.target_path) | \(.env) | \(.region) |"' targets.json
+            fi
+          } >> $GITHUB_STEP_SUMMARY
+
+  terraform-apply:
+    name: "🚀(${{matrix.target}})"
+    runs-on: ubuntu-latest
+    needs: init
+    if: ${{ toJSON(fromJSON(needs.init.outputs.terraform_targets)) != '[]' }}
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.init.outputs.terraform_targets) }}
+      fail-fast: false
+    defaults:
+      run:
+        working-directory: '${{ matrix.target_path }}'
+    env:
+      TARGET: ${{ matrix.target }}
+      TARGET_PATH: ${{ matrix.target_path }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+
+      - name: Terraform Apply
+        id: apply
+        run: |
+          MAX_RETRIES=5
+          RETRY_WAIT=30
+          attempt=1
+
+          while [ $attempt -le $MAX_RETRIES ]; do
+            echo "Attempt $attempt of $MAX_RETRIES"
+          
+            terraform plan -no-color -out=tfplan 2>&1 | tee tf-plan.txt
+          
+            terraform apply -no-color tfplan 2>&1 | tee tf-apply.txt
+            APPLY_EXIT_CODE=${PIPESTATUS[0]}
+          
+            if [ $APPLY_EXIT_CODE -eq 0 ]; then
+              break
+            else
+              if grep -q "Lock Info:" tf-apply.txt; then
+                echo "Terraform state is locked. Waiting ${RETRY_WAIT}s before retry..."
+                grep -A 5 "Lock Info:" tf-apply.txt
+                if [ $attempt -eq $MAX_RETRIES ]; then
+                  echo "Max retries reached. Failed to acquire lock."
+                  exit 1
+                fi
+                sleep $RETRY_WAIT
+                RETRY_WAIT=$((RETRY_WAIT * 2))
+                attempt=$((attempt + 1))
+                continue
+              else
+                echo "Failed with non-lock error"
+                exit 1
+              fi
+            fi
+          done
+
+          REPLACES=$(grep -c "Replacement complete" tf-apply.txt || echo)
+          ADDS=$(grep -c "Creation complete" tf-apply.txt || echo)
+          CHANGES=$(grep -c "Modifications complete" tf-apply.txt || echo)
+          DESTROYS=$(grep -c "Destruction complete" tf-apply.txt || echo)
+
+          {
+            echo "APPLY_REPLACES=$REPLACES" >> $GITHUB_ENV
+            echo "APPLY_ADDS=$ADDS" >> $GITHUB_ENV
+            echo "APPLY_CHANGES=$CHANGES" >> $GITHUB_ENV
+            echo "APPLY_DESTROYS=$DESTROYS" >> $GITHUB_ENV
+          }
+          exit $APPLY_EXIT_CODE
+
+      - name: Upload Apply Results
+        id: upload-apply-results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-apply-${{ matrix.provider }}-${{ matrix.env }}-${{ matrix.region }}
+          path: ${{ matrix.target_path }}/tf-apply.txt
+          retention-days: 5
+
+      - name: Create Check
+        id: create-check
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('${{ matrix.target_path }}/tf-plan.txt', 'utf8');
+            const applyOutput = fs.readFileSync('${{ matrix.target_path }}/tf-apply.txt', 'utf8');
+
+            const MAX_OUTPUT_LENGTH = 61440; // 60KB in bytes
+            const SUMMARY_LENGTH_THRESHOLD = 5120; // 5KB in bytes
+            const applyResultSizeKB = (Buffer.byteLength(applyOutput, 'utf8') / 1024).toFixed(1);
+
+            function extractResourcesFromApply(applyOutput, pattern) {
+              const resources = new Set();
+              const regex = new RegExp(`(\\S+): ${pattern}`, 'gm');
+              const matches = Array.from(applyOutput.matchAll(regex));
+              matches.forEach(match => {
+                if (match[1]) {
+                  resources.add(match[1]);
+                }
+              });
+              const result = Array.from(resources);
+              console.log(`Result: ${result}`);
+              return result
+            }
+
+            const addedResources = extractResourcesFromApply(applyOutput, '.*Creation complete.*');
+            const changedResources = extractResourcesFromApply(applyOutput, '.*Modifications complete.*');
+            const replacedResources = extractResourcesFromApply(applyOutput, '.*Replacement complete.*');
+            const destroyedResources = extractResourcesFromApply(applyOutput, '.*Destruction complete.*');
+
+            function findResourceDetails(planOutput, resourceName) {
+              const lines = planOutput.split('\n');
+              let details = [];
+              let inResource = false;
+              let bracketCount = 0;
+            
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (!inResource) {
+                  if (line.includes(`# ${resourceName} will be`) || line.includes(`  + ${resourceName} `)) {
+                    inResource = true;
+                    details.push(line);
+                    if (line.includes('{')) bracketCount++;
+                    continue;
+                  }
+                }
+            
+                if (inResource) {
+                  details.push(line);
+                  bracketCount += (line.match(/{/g) || []).length;
+                  bracketCount -= (line.match(/}/g) || []).length;
+            
+                  if (bracketCount === 0 && line.trim() === '}') {
+                    inResource = false;
+                    break;
+                  }
+                }
+              }
+              return details.join('\n');
+            }
+
+            let detailText = `
+            ## Apply Result for \`${{ matrix.target }}\`
+
+            **Environment:** \`${{ matrix.env }}\` | **Region:** \`${{ matrix.region }}\` | **Account:** \`${{ matrix.account_name }}\`
+            **Pushed by:** @${{ github.actor }}
+
+            ### Status
+            - Terraform Validation: ${{ steps.validate.outcome == 'success' && '✅' || '❌' }}
+            - Terraform Apply: ${{ steps.apply.outcome == 'success' && '✅' || '❌' }}
+
+            ### Changes Summary
+            ${addedResources.length > 0 ? `➕ ${addedResources.length} added\t` : ''}${changedResources.length > 0 ? `➕➖ ${changedResources.length} changed\t` : ''}${replacedResources.length > 0 ? `🔄 ${replacedResources.length} replaced\t` : ''}${destroyedResources.length > 0 ? `✖️ ${destroyedResources.length} destroyed\t` : ''}
+            ${(!addedResources.length && !changedResources.length && !replacedResources.length && !destroyedResources.length) ? '🚫 No changes' : ''}`;
+
+            let resourceDetails = '';
+            if (addedResources.length > 0) {
+              resourceDetails += `
+              ### ➕ Added Resources
+              ${addedResources.map(resource => `
+              <details>
+              <summary><code>+ ${resource}</code></summary>
+
+              \`\`\`hcl
+              ${findResourceDetails(planOutput, resource)}
+              \`\`\`
+              </details>
+              `).join('\n')}`;
+            }
+
+            const totalSize = Buffer.byteLength(detailText + resourceDetails + applyOutput, 'utf8');
+
+            let finalDetailText = detailText;
+            if (totalSize > MAX_OUTPUT_LENGTH) {
+              finalDetailText += `\n\n📄 Full logs (${applyResultSizeKB}KB) are available in the [workflow artifacts](${{ steps.upload-apply-results.outputs.artifact-url }})`;
+            } else if (Buffer.byteLength(applyOutput, 'utf8') > SUMMARY_LENGTH_THRESHOLD) {
+              finalDetailText += resourceDetails;
+              finalDetailText += `
+              <details>
+              <summary>📄 Full Apply Output (${applyResultSizeKB}KB)</summary>
+
+              \`\`\`hcl
+              ${applyOutput}
+              \`\`\`
+              </details>`;
+            } else {
+              finalDetailText += resourceDetails;
+              finalDetailText += `\n\n### 📄 Full Apply Output\n\`\`\`hcl\n${applyOutput}\n\`\`\``;
+            }
+
+            finalDetailText += `\n\n---
+            > 🏗️ Generated by: [${{ github.workflow }}#${{ github.run_number }}(Attempt Count: ${{ github.run_attempt }})]
+            > 📝 Commit: ${{ github.sha }}
+
+            [${{ github.workflow }}#${{ github.run_number }}(Attempt Count: ${{ github.run_attempt }})]: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
+
+            const check = await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: `📋 (${{ matrix.target }})`,
+              head_sha: "${{ github.sha }}",
+              status: 'completed',
+              conclusion: "${{ steps.apply.outcome }}" === 'success' ? 'success' : 'failure',
+              output: {
+                title: `Apply Result - \`${{ matrix.target }}\``,
+                summary: `Environment: \`${{ matrix.env }}\` | Region: \`${{ matrix.region }}\` | Account: \`${{ matrix.account_name }}\`\n\nStatus: ${{ steps.apply.outcome == 'success' && '✅' || '❌' }}`,
+                text: finalDetailText
+              }
+            });
+
+            core.setOutput('check_id', check.data.id);
+            core.setOutput('check_html_url', check.data.html_url);
+
+
+      - name: Update Step Summary
+        if: always()
+        run: |
+          if [ "${{ steps.apply.outcome }}" = "success" ]; then
+            REPLACES=$(grep -c "Replacement complete" tf-apply.txt 2>/dev/null || echo)
+            ADDS=$(grep -c "Creation complete" tf-apply.txt 2>/dev/null || echo)
+            CHANGES=$(grep -c "Modifications complete" tf-apply.txt 2>/dev/null || echo)
+            DESTROYS=$(grep -c "Destruction complete" tf-apply.txt 2>/dev/null || echo)
+
+            SUMMARY_PARTS=()
+            [ "$REPLACES" -gt "0" ] && SUMMARY_PARTS+=("🔄 $REPLACES replaced")
+            [ "$ADDS" -gt "0" ] && SUMMARY_PARTS+=("➕ $ADDS added")
+            [ "$CHANGES" -gt "0" ] && SUMMARY_PARTS+=("➕➖ $CHANGES changed")
+            [ "$DESTROYS" -gt "0" ] && SUMMARY_PARTS+=("✖️ $DESTROYS destroyed")
+            SUMMARY_TEXT=${SUMMARY_PARTS[*]:-"🚫 No changes"}
+          
+            STATUS_EMOJI="✅"
+            APPLY_STATUS="Successfully applied"
+          else
+            STATUS_EMOJI="❌"
+            APPLY_STATUS="Failed to apply"
+            SUMMARY_TEXT="Failed to apply changes"
+          fi
+
+          {
+            echo "## 🚀 Terraform Apply Results for ${{ matrix.target }}"
+            echo
+            echo "**Environment:** \`${{ matrix.env }}\` | **Region:** \`${{ matrix.region }}\` | **Account:** \`${{ matrix.account_name }}\`"
+            echo
+            echo "### Status $STATUS_EMOJI"
+            echo "- Terraform Validation: ${{ steps.validate.outcome == 'success' && '✅' || '❌' }}"
+            echo "- Terraform Apply: $STATUS_EMOJI $APPLY_STATUS"
+            echo
+            echo "### Changes Summary"
+            echo "$SUMMARY_TEXT"
+            echo
+            echo "---"
+            echo "📋 Detailed results can be found in the [check results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.create-check.outputs.check_id }})."
+          } >> $GITHUB_STEP_SUMMARY 
