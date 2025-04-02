@@ -70,7 +70,7 @@ jobs:
               env="${BASH_REMATCH[3]}"
               region="${BASH_REMATCH[4]}"
           
-              target="$provider/$account_name/$env/$region_code"
+              target="$provider/$account_name/$env/$region"
               json_str="{\"target\":\"$target\",\"target_path\":\"$dir\",\"provider\":\"$provider\",\"account_name\":\"$account_name\",\"env\":\"$env\",\"region\":\"$region\"}"
           
               if [ "$(cat targets.json)" = "[]" ]; then
@@ -101,7 +101,7 @@ jobs:
               echo "ℹ️ No terraform directories to process"
             else
               echo "| Provider | Target | TargetPath | Environment | Region |"
-              echo "|----------|---------|---------|------------|-------------|---------|-------------|"
+              echo "|----------|---------|---------|------------|-------------|"
               jq -r '.[] | "| \(.provider) | \(.target) | \(.target_path) | \(.env) | \(.region) |"' targets.json
             fi
           } >> $GITHUB_STEP_SUMMARY
@@ -154,7 +154,7 @@ jobs:
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-${{ matrix.target_path }}
+          name: terraform-plan-${{ matrix.provider }}-${{ metrix.env }}-${{ metrix.region }}
           path: ${{ matrix.target_path }}/tfplan
           retention-days: 5
 
@@ -168,7 +168,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: plan-output-${{ matrix.target_path }}
+          name: plan-output-${{ matrix.provider }}-${{ metrix.env }}-${{ metrix.region }}
           path: ${{ matrix.target_path }}/plan_output.txt
 
       - name: Create PR Comment
