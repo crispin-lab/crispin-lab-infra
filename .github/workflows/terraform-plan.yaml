@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: "🔎 terraform targets"
+      - name: "🔎 Terraform targets"
         id: tf-targets
         run: |
           # .github/** 디렉토리 파일 변경 확인
@@ -87,9 +87,27 @@ jobs:
           else
             echo "terraform_targets=$(jq -c . targets.json)" >> $GITHUB_OUTPUT
           fi
+          
+          # Step Summary 생성
+          {
+            echo "# $TITLE"
+            echo
+            echo "$MODE_MESSAGE"
+            if [ "$PROCESS_ALL" = "true" ] && [ "${{ github.event_name }}" != "schedule" ]; then
+              echo "**.github/** files changed - running full plan**"
+            fi
+            echo
+            if [ "$(cat targets.json)" = "[]" ]; then
+              echo "ℹ️ No terraform directories to process"
+            else
+              echo "| Provider | Product | Target | Account ID | Environment | Region | Region Code |"
+              echo "|----------|---------|---------|------------|-------------|---------|-------------|"
+              jq -r '.[] | "| \(.provider) | \(.product) | \(.target) | \(.account_id) | \(.env) | \(.region) | \(.region_code) |"' targets.json
+            fi
+          } >> $GITHUB_STEP_SUMMARY
 
   terraform-plan:
-    name: "🥽 (${{ matrix.target || 'none-target' }})"
+    name: "🥽 (${{ matrix.target}})"
     runs-on: ubuntu-latest
     needs: init
     if: fromJSON(needs.init.outputs.terraform_targets) != '[]' && join(fromJSON(needs.init.outputs.terraform_targets), '') != ''
