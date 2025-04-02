@@ -1,12 +1,15 @@
 name: "📝TF Plan"
 
 on:
-  push:
+  pull_request:
     branches:
       - main
-    paths:
-      - "terraform/**"
-      - ".github/**"
+      - ci/test**
+  workflow_dispatch:
+    inputs:
+      run:
+        default: all
+        description: It would trigger entire target's planning
 
 permissions:
   contents: read
@@ -30,7 +33,7 @@ jobs:
           if [ ! -z "$GITHUB_FILES_CHANGED" ]; then
             echo "GitHub workflow files changed - processing all directories"
             PROCESS_ALL=true
-          elif [ $GITHUB_EVENT_NAME -eq "workflow_dispatch" ]; then
+          elif [ $GITHUB_EVENT_NAME = "workflow_dispatch" ]; then
             echo "Running in dispatch mode - processing all directories"
             PROCESS_ALL=true
           else
@@ -82,7 +85,7 @@ jobs:
           fi
 
   terraform-plan:
-    name: "🥽 (${{matrix.target}})"
+    name: "🥽 (${{ matrix.target || 'none-target' }})"
     runs-on: ubuntu-latest
     needs: init
     if: "join(fromJSON(needs.init.outputs.terraform_targets), '') != ''"
