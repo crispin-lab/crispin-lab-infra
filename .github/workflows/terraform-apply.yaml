@@ -204,9 +204,7 @@ jobs:
                   resources.add(match[1]);
                 }
               });
-              const result = Array.from(resources);
-              console.log(`Result: ${result}`);
-              return result
+              return Array.from(resources);
             }
 
             const addedResources = extractResourcesFromApply(applyOutput, '.*Creation complete.*');
