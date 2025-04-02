@@ -32,7 +32,7 @@ repos:
               echo ''
               echo 'After installing, run git commit again to continue.'
               echo '==================================================================='
-              exit 10
+              exit 1
             fi
           
             for d in $DIRS; do
@@ -63,7 +63,7 @@ repos:
                 terraform -chdir=$d init -input=false -upgrade
                 if [[ $? -ne 0 ]]; then
                   echo 'terraform init failed!'
-                  exit 1
+                  exit 2
                 fi
                 # Store hash for cache
                 echo \"$CONFIG_HASH\" > \"$CACHE_FILE\"
@@ -76,15 +76,23 @@ repos:
               terraform -chdir=$d validate
               if [[ $? -ne 0 ]]; then
                 echo 'terraform validate failed!'
-                exit 2
+                exit 3
               fi
           
               # Format terraform
               echo 'Running terraform fmt...'
-              terraform fmt $d
+              terraform fmt -recursive $d
               if [[ $? -ne 0 ]]; then
                 echo 'terraform fmt failed!'
-                exit 3
+                exit 4
+              fi
+          
+              # Plan terraform
+              echo 'Running terraform plan...'
+              terraform -chdir=$d plan -out=tfplan
+              if [[ $? -ne 0 ]]; then
+                echo 'terraform plan failed!'
+                exit 5
               fi
           
               # Run security checks with tfsec
@@ -92,7 +100,7 @@ repos:
               tfsec $d --format=default
               if [[ $? -ne 0 ]]; then
                 echo 'Security issues found! Please fix them before committing.'
-                exit 5
+                exit 6
               fi
           
               # Check directory for documentation
@@ -103,13 +111,13 @@ repos:
               terraform-docs markdown table --output-file README.md $d
               if [[ $? -ne 0 ]]; then
                 echo 'terraform-docs failed!'
-                exit 4
+                exit 7
               fi
           
               echo 'Completed processing $d'
             done
           "
         language: system
-        types: [terraform]
+        types: [ terraform ]
         files: '\.tf$'
         verbose: true
