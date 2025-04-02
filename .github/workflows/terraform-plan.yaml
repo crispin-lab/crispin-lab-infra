@@ -28,7 +28,6 @@ jobs:
       - name: "🔎 Terraform targets"
         id: tf-targets
         run: |
-          # .github/** 디렉토리 파일 변경 확인
           GITHUB_FILES_CHANGED=$(git diff --cached --name-only | grep "^.github/" || echo)
           if [ ! -z "$GITHUB_FILES_CHANGED" ]; then
             echo "GitHub workflow files changed - processing all directories"
@@ -41,9 +40,7 @@ jobs:
             PROCESS_ALL=false
           fi
           
-          # Target Dirs 체크
           if [ "$PROCESS_ALL" = "true" ]; then
-            # 모든 terraform 디렉토리 찾기
             DIRS=$(find terraform -type d -mindepth 4 -maxdepth 4)
             MODE_MESSAGE="Running apply on all terraform directories"
             TITLE="🌕 Full Terraform Plan"
@@ -57,7 +54,6 @@ jobs:
             TITLE="🌗 Changed Terraform Directories"
           fi          
           
-          # Target Dirs 출력
           echo "Target directories:"
           echo "$DIRS"
           
@@ -81,14 +77,12 @@ jobs:
             fi
           done <<< "$DIRS"
           
-          # GitHub Actions output 설정
           if [ ! -s targets.json ] || [ "$(cat targets.json)" = "[]" ]; then
             echo "terraform_targets=[]" >> $GITHUB_OUTPUT
           else
             echo "terraform_targets=$(jq -c . targets.json)" >> $GITHUB_OUTPUT
           fi
           
-          # Step Summary 생성
           {
             echo "# $TITLE"
             echo
@@ -175,7 +169,6 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             
-            // GitHub Actions 변수들을 JavaScript 변수로 가져오기
             const targetPath = '${{ matrix.target_path }}';
             const actor = '${{ github.actor }}';
             const eventName = '${{ github.event_name }}';
@@ -193,7 +186,6 @@ jobs:
             }
             
             if (foundFile) {
-              // Terraform 출력 형식에 맞게 조건 변경
               const summary = planOutput.includes('No changes')
                 ? '✅ 변경 사항 없음'
                 : planOutput.includes('Error:')
