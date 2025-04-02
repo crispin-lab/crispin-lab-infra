@@ -190,8 +190,7 @@ jobs:
             
             if (fs.existsSync(filePath)) {
               foundFile = true;
-              usedPath = testPath;
-              planOutput = fs.readFileSync(testPath, 'utf8');
+              planOutput = fs.readFileSync(foundFile, 'utf8');
             }
             
             if (foundFile) {
@@ -206,7 +205,6 @@ jobs:
 
               commentBody += `**${targetPath}**: ${summary}\n\n`;
               commentBody += `<details><summary>세부 플랜 보기</summary>\n\n\`\`\`terraform\n${planOutput}\n\`\`\`\n\n</details>\n\n`;
-              commentBody += `*파일 경로: ${usedPath}*\n\n`;
             } else {
               commentBody += `**${targetPath}**: ❓ 플랜 결과 없음 (파일을 찾을 수 없음)\n\n`;
             } 
