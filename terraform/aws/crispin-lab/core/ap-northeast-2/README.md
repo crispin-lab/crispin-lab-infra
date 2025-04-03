@@ -7,18 +7,24 @@
 
 ## Providers
 
-No providers.
+| Name | Version |
+|------|---------|
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.81.0 |
 
 ## Modules
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_developer_role"></a> [developer\_role](#module\_developer\_role) | ./modules/iam-role | n/a |
 | <a name="module_developer_user"></a> [developer\_user](#module\_developer\_user) | ./modules/iam-user | n/a |
+| <a name="module_devops_role"></a> [devops\_role](#module\_devops\_role) | ./modules/iam-role | n/a |
 | <a name="module_devops_user"></a> [devops\_user](#module\_devops\_user) | ./modules/iam-user | n/a |
 
 ## Resources
 
-No resources.
+| Name | Type |
+|------|------|
+| [aws_caller_identity.current](https://registry.terraform.io/providers/hashicorp/aws/5.81.0/docs/data-sources/caller_identity) | data source |
 
 ## Inputs
 
