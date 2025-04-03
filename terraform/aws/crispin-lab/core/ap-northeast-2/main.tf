@@ -7,6 +7,8 @@ terraform {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 provider "aws" {
   region = var.default_aws_region
 }
@@ -19,4 +21,46 @@ module "devops_user" {
 module "developer_user" {
   source    = "./modules/iam-user"
   user_name = "dev_crispin"
+}
+
+module "devops_role" {
+  source        = "./modules/iam-role"
+  iam_role_name = "DevOps"
+  assume_role_policy = jsonencode(
+    {
+      Statement = [
+        {
+          Action = "sts:AssumeRole"
+          Effect = "Allow"
+          Principal = {
+            AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/crispin"
+          }
+          Sid = "DevOpsSts"
+        },
+      ]
+      Version = "2012-10-17"
+    }
+  )
+  max_session_duration = 28800
+}
+
+module "developer_role" {
+  source        = "./modules/iam-role"
+  iam_role_name = "Developer"
+  assume_role_policy = jsonencode(
+    {
+      Statement = [
+        {
+          Action = "sts:AssumeRole"
+          Effect = "Allow"
+          Principal = {
+            AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/dev_crispin"
+          }
+          Sid = "DeveloperSts"
+        },
+      ]
+      Version = "2012-10-17"
+    }
+  )
+  max_session_duration = 43200
 }
