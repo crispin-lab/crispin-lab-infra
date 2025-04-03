@@ -12,11 +12,11 @@ provider "aws" {
 }
 
 module "devops_user" {
-  source    = "./modules/iam"
+  source    = "./modules/iam-user"
   user_name = "crispin"
 }
 
 module "developer_user" {
-  source    = "./modules/iam"
+  source    = "./modules/iam-user"
   user_name = "dev_crispin"
 }

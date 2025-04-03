@@ -13,8 +13,8 @@ No providers.
 
 | Name | Source | Version |
 |------|--------|---------|
-| <a name="module_developer_user"></a> [developer\_user](#module\_developer\_user) | ./modules/iam | n/a |
-| <a name="module_devops_user"></a> [devops\_user](#module\_devops\_user) | ./modules/iam | n/a |
+| <a name="module_developer_user"></a> [developer\_user](#module\_developer\_user) | ./modules/iam-user | n/a |
+| <a name="module_devops_user"></a> [devops\_user](#module\_devops\_user) | ./modules/iam-user | n/a |
 
 ## Resources
 
