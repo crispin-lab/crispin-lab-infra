@@ -64,3 +64,37 @@ module "developer_role" {
   )
   max_session_duration = 43200
 }
+
+module "github_oidc_provider" {
+  source = "./modules/github-oidc-provider"
+}
+
+module "github_actions_role" {
+  source        = "./modules/iam-role"
+  iam_role_name = "GitHubActions"
+  assume_role_policy = jsonencode({
+    Statement = [
+      {
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Effect = "Allow"
+        Principal = {
+          Federated = module.github_oidc_provider.arn
+        }
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+          }
+          StringLike = {
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:crispin-lab/crispin-lab-be:ref:refs/heads/main",
+              "repo:crispin-lab/crispin-lab-fe:ref:refs/heads/main",
+              "repo:crispin-lab/crispin-lab-infra:ref:refs/heads/main",
+            ]
+          }
+        }
+      }
+    ]
+    Version = "2012-10-17"
+  })
+  max_session_duration = 3600
+}
