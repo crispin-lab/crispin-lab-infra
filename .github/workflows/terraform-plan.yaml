@@ -12,6 +12,7 @@ on:
         description: It would trigger entire target's planning
 
 permissions:
+  id-token: write
   contents: read
   pull-requests: write
 
@@ -126,6 +127,12 @@ jobs:
           starts-with: |
             <!-- Target Directory: ${{ matrix.target }} -->
       - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: "ap-northeast-2"
 
       - name: Terraform Format Check
         id: fmt
