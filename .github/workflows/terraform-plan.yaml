@@ -12,6 +12,7 @@ on:
         description: It would trigger entire target's planning
 
 permissions:
+  id-token: write
   contents: read
   pull-requests: write
 
