@@ -89,7 +89,7 @@ repos:
           
               # Plan terraform
               echo 'Running terraform plan...'
-              terraform -chdir=$d plan -out=tfplan
+              terraform -chdir=$d plan -out=tfplan -lock=false
               if [[ $? -ne 0 ]]; then
                 echo 'terraform plan failed!'
                 exit 5
