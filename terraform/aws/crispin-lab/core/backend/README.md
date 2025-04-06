@@ -15,6 +15,7 @@
 
 | Name | Source | Version |
 |------|--------|---------|
+| <a name="module_kms_key"></a> [kms\_key](#module\_kms\_key) | ./modules/kms | n/a |
 | <a name="module_terraform_lock_table"></a> [terraform\_lock\_table](#module\_terraform\_lock\_table) | ./modules/dynamodb | n/a |
 | <a name="module_terraform_state_bucket"></a> [terraform\_state\_bucket](#module\_terraform\_state\_bucket) | ./modules/s3 | n/a |
 | <a name="module_terraform_state_log_bucket"></a> [terraform\_state\_log\_bucket](#module\_terraform\_state\_log\_bucket) | ./modules/s3 | n/a |
@@ -35,6 +36,6 @@
 
 | Name | Description |
 |------|-------------|
-| <a name="output_dynamodb_table_name"></a> [dynamodb\_table\_name](#output\_dynamodb\_table\_name) | n/a |
-| <a name="output_s3_bucket_name"></a> [s3\_bucket\_name](#output\_s3\_bucket\_name) | n/a |
+| <a name="output_dynamodb_table_name"></a> [dynamodb\_table\_name](#output\_dynamodb\_table\_name) | Name of the DynamoDB table name |
+| <a name="output_s3_bucket_name"></a> [s3\_bucket\_name](#output\_s3\_bucket\_name) | Name of the s3 bucket name |
 <!-- END_TF_DOCS -->

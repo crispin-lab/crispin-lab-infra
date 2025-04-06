@@ -14,3 +14,8 @@ variable "github_actions_role" {
   type        = string
   default     = "GitHubActions"
 }
+
+variable "kms_key_arn" {
+  description = "ARN of the KMS key"
+  type        = string
+}
