@@ -8,3 +8,9 @@ variable "devops_role" {
   type        = string
   default     = "DevOps"
 }
+
+variable "github_actions_role" {
+  description = "Name of the GitHubActions IAM role"
+  type        = string
+  default     = "GitHubActions"
+}
