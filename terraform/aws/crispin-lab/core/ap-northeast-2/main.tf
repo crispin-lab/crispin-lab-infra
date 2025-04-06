@@ -86,9 +86,9 @@ module "github_actions_role" {
           }
           StringLike = {
             "token.actions.githubusercontent.com:sub" = [
-              "repo:crispin-lab/crispin-lab-be:ref:refs/heads/*",
-              "repo:crispin-lab/crispin-lab-fe:ref:refs/heads/*",
-              "repo:crispin-lab/crispin-lab-infra:ref:refs/heads/*",
+              "repo:crispin-lab/crispin-lab-be:*",
+              "repo:crispin-lab/crispin-lab-fe:*",
+              "repo:crispin-lab/crispin-lab-infra:*",
             ]
           }
         }
