@@ -13,6 +13,10 @@ provider "aws" {
   region = var.default_aws_region
 }
 
+module "kms_key" {
+  source = "./modules/kms"
+}
+
 module "terraform_state_bucket" {
   source      = "./modules/s3"
   bucket_name = "crispin-lab-terraform-states"
@@ -60,6 +64,7 @@ module "terraform_state_bucket" {
     ]
   })
   logging_bucket_name = "crispin-lab-terraform-states-logging"
+  kms_key_arn         = module.kms_key.arn
 }
 
 module "terraform_state_log_bucket" {
@@ -109,18 +114,12 @@ module "terraform_state_log_bucket" {
     ]
   })
   logging_bucket_name = "crispin-lab-terraform-states-logging"
+  kms_key_arn         = module.kms_key.arn
 }
 
 module "terraform_lock_table" {
   source      = "./modules/dynamodb"
   table_name  = "terraform-locks"
   devops_role = "DevOps"
-}
-
-output "s3_bucket_name" {
-  value = module.terraform_state_bucket.bucket_name
-}
-
-output "dynamodb_table_name" {
-  value = module.terraform_lock_table.table_name
+  kms_key_arn = module.kms_key.arn
 }

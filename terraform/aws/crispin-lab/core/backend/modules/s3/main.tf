@@ -7,12 +7,6 @@ terraform {
   }
 }
 
-resource "aws_kms_key" "this" {
-  description             = var.kms_key_description
-  deletion_window_in_days = var.kms_deletion_window_in_days
-  enable_key_rotation     = var.kms_enable_key_rotation
-}
-
 resource "aws_s3_bucket" "this" {
   bucket = var.bucket_name
 
@@ -32,9 +26,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
   rule {
+    bucket_key_enabled = false
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = aws_kms_key.this.arn
+      kms_master_key_id = var.kms_key_arn
     }
   }
 }

@@ -1,7 +1,3 @@
-resource "aws_kms_key" "dynamo_db_kms" {
-  enable_key_rotation = true
-}
-
 resource "aws_dynamodb_table" "terraform_locks" {
   name         = var.table_name
   billing_mode = "PAY_PER_REQUEST"
@@ -14,7 +10,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
 
   server_side_encryption {
     enabled     = true
-    kms_key_arn = aws_kms_key.dynamo_db_kms.arn
+    kms_key_arn = var.kms_key_arn
   }
 
   point_in_time_recovery {
