@@ -46,7 +46,16 @@ data "aws_iam_role" "devops" {
   name = var.devops_role
 }
 
-resource "aws_iam_role_policy_attachment" "terraform_dynamodb_attach" {
+data "aws_iam_role" "github_actions" {
+  name = var.github_actions_role
+}
+
+resource "aws_iam_role_policy_attachment" "terraform_dynamodb_attach_for_devops" {
   role       = data.aws_iam_role.devops.name
+  policy_arn = aws_iam_policy.dynamodb_access.arn
+}
+
+resource "aws_iam_role_policy_attachment" "terraform_dynamodb_attach_for_github_actions" {
+  role       = data.aws_iam_role.github_actions.name
   policy_arn = aws_iam_policy.dynamodb_access.arn
 }

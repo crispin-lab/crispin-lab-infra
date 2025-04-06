@@ -23,7 +23,10 @@ module "terraform_state_bucket" {
         Sid    = "AllowDevOpsRoleAccess"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps"
+          AWS = [
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+          ]
         }
         Action = [
           "s3:GetObject",
@@ -47,7 +50,10 @@ module "terraform_state_bucket" {
         ]
         Condition = {
           StringNotEquals = {
-            "aws:PrincipalArn" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps"
+            "aws:PrincipalArn" : [
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+            ]
           }
         }
       }
@@ -66,7 +72,10 @@ module "terraform_state_log_bucket" {
         Sid    = "AllowDevOpsRoleAccess"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps"
+          AWS = [
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
+            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+          ]
         }
         Action = [
           "s3:GetObject",
@@ -90,7 +99,10 @@ module "terraform_state_log_bucket" {
         ]
         Condition = {
           StringNotEquals = {
-            "aws:PrincipalArn" : "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps"
+            "aws:PrincipalArn" : [
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
+              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+            ]
           }
         }
       }
