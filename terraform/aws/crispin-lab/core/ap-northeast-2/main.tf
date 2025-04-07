@@ -9,6 +9,10 @@ terraform {
 
 data "aws_caller_identity" "current" {}
 
+locals {
+  account_id = sensitive(data.aws_caller_identity.current.account_id)
+}
+
 provider "aws" {
   region = var.default_aws_region
 }
@@ -33,7 +37,7 @@ module "devops_role" {
           Action = "sts:AssumeRole"
           Effect = "Allow"
           Principal = {
-            AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/crispin"
+            AWS = "arn:aws:iam::${local.account_id}:user/crispin"
           }
           Sid = "DevOpsSts"
         },
@@ -54,7 +58,7 @@ module "developer_role" {
           Action = "sts:AssumeRole"
           Effect = "Allow"
           Principal = {
-            AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:user/dev_crispin"
+            AWS = "arn:aws:iam::${local.account_id}:user/dev_crispin"
           }
           Sid = "DeveloperSts"
         },
@@ -97,4 +101,72 @@ module "github_actions_role" {
     Version = "2012-10-17"
   })
   max_session_duration = 3600
+}
+
+module "github_actions_iam_policy" {
+  source                 = "./modules/iam-policy"
+  iam_policy_name        = "GitHubActionsIAMPermissions"
+  iam_policy_description = "Required IAM permissions for GitHub Actions"
+  iam_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetOpenIDConnectProvider",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider"
+        ]
+        Resource = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:PutRolePolicy",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:TagRole"
+        ]
+        Resource = [
+          "arn:aws:iam::${local.account_id}:role/Developer",
+          "arn:aws:iam::${local.account_id}:role/DevOps"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetUser",
+          "iam:CreateUser",
+          "iam:DeleteUser",
+          "iam:TagUser",
+          "iam:PutUserPolicy",
+          "iam:AttachUserPolicy",
+          "iam:DetachUserPolicy"
+        ]
+        Resource = [
+          "arn:aws:iam::${local.account_id}:user/dev_crispin",
+          "arn:aws:iam::${local.account_id}:user/crispin"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:ListPolicies",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion"
+        ]
+        Resource = "arn:aws:iam::${local.account_id}:policy/*"
+      }
+    ]
+  })
+}
+
+module "iam_role_policy_attachment" {
+  source         = "./modules/iam-attachment"
+  iam_role_name  = "GitHubActions"
+  iam_policy_arn = module.github_actions_iam_policy.policy_arn
 }

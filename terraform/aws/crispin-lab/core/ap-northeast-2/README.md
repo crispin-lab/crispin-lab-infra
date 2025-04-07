@@ -19,8 +19,10 @@
 | <a name="module_developer_user"></a> [developer\_user](#module\_developer\_user) | ./modules/iam-user | n/a |
 | <a name="module_devops_role"></a> [devops\_role](#module\_devops\_role) | ./modules/iam-role | n/a |
 | <a name="module_devops_user"></a> [devops\_user](#module\_devops\_user) | ./modules/iam-user | n/a |
+| <a name="module_github_actions_iam_policy"></a> [github\_actions\_iam\_policy](#module\_github\_actions\_iam\_policy) | ./modules/iam-policy | n/a |
 | <a name="module_github_actions_role"></a> [github\_actions\_role](#module\_github\_actions\_role) | ./modules/iam-role | n/a |
 | <a name="module_github_oidc_provider"></a> [github\_oidc\_provider](#module\_github\_oidc\_provider) | ./modules/github-oidc-provider | n/a |
+| <a name="module_iam_role_policy_attachment"></a> [iam\_role\_policy\_attachment](#module\_iam\_role\_policy\_attachment) | ./modules/iam-attachment | n/a |
 
 ## Resources
 
@@ -36,7 +38,5 @@
 
 ## Outputs
 
-| Name | Description |
-|------|-------------|
-| <a name="output_github_actions_role_arn"></a> [github\_actions\_role\_arn](#output\_github\_actions\_role\_arn) | ARN of the GitHub Actions IAM role |
+No outputs.
 <!-- END_TF_DOCS -->
