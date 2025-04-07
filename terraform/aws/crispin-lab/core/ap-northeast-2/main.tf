@@ -185,7 +185,8 @@ module "github_actions_iam_policy" {
           "s3:GetBucketWebsite",
           "s3:GetBucketVersioning",
           "s3:GetAccelerateConfiguration",
-          "s3:GetBucketRequestPayment"
+          "s3:GetBucketRequestPayment",
+          "s3:GetBucketLogging"
         ],
         Resource = [
           "arn:aws:s3:::crispin-lab-terraform-states",
@@ -211,7 +212,7 @@ module "github_actions_iam_policy" {
         Action = [
           "kms:GetKeyPolicy",
           "kms:GetKeyRotationStatus",
-          "kms:ListResourceTags"
+          "kms:ListResourceTags",
         ],
         Resource = "arn:aws:kms:ap-northeast-2:${local.account_id}:key/*"
       },
@@ -220,7 +221,8 @@ module "github_actions_iam_policy" {
         "Action" : [
           "dynamodb:DescribeTable",
           "dynamodb:DescribeContinuousBackups",
-          "dynamodb:DescribeTimeToLive"
+          "dynamodb:DescribeTimeToLive",
+          "dynamodb:ListTagsOfResource"
         ],
         "Resource" : "arn:aws:dynamodb:ap-northeast-2:${local.account_id}:table/terraform-locks"
       }
