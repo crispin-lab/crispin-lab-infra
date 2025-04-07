@@ -180,11 +180,11 @@ module "github_actions_iam_policy" {
         Effect = "Allow",
         Action = [
           "s3:GetBucketPolicy",
-          "kms:GetKeyPolicy"
+          "s3:GetBucketAcl"
         ],
         Resource = [
           "arn:aws:s3:::crispin-lab-terraform-states",
-          "arn:aws:s3:::crispin-lab-terraform-states-logging",
+          "arn:aws:s3:::crispin-lab-terraform-states-logging"
         ]
       },
       {
@@ -200,6 +200,13 @@ module "github_actions_iam_policy" {
             "kms:ResourceTag/Name" = "aws-s3-dynamodb-kms-key"
           }
         }
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:GetKeyPolicy"
+        ],
+        Resource = "arn:aws:kms:ap-northeast-2:${local.account_id}:key/*"
       }
     ]
   })
