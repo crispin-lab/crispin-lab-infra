@@ -127,6 +127,7 @@ module "github_actions_iam_policy" {
           "iam:CreateRole",
           "iam:DeleteRole",
           "iam:PutRolePolicy",
+          "iam:GetRolePolicy",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
