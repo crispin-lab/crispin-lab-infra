@@ -191,7 +191,8 @@ module "github_actions_iam_policy" {
           "s3:GetReplicationConfiguration",
           "s3:GetEncryptionConfiguration",
           "s3:GetBucketObjectLockConfiguration",
-          "s3:GetBucketTagging"
+          "s3:GetBucketTagging",
+          "s3:GetBucketPublicAccessBlock"
         ],
         Resource = [
           "arn:aws:s3:::crispin-lab-terraform-states",
