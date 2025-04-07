@@ -129,6 +129,8 @@ module "github_actions_iam_policy" {
           "iam:PutRolePolicy",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
           "iam:TagRole"
         ]
         Resource = [
@@ -160,6 +162,18 @@ module "github_actions_iam_policy" {
           "iam:GetPolicyVersion"
         ]
         Resource = "arn:aws:iam::${local.account_id}:policy/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies"
+        ]
+        Resource = [
+          "arn:aws:iam::${local.account_id}:role/GitHubActions"
+        ]
       }
     ]
   })
