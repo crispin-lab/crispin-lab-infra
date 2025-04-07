@@ -187,7 +187,8 @@ module "github_actions_iam_policy" {
           "s3:GetAccelerateConfiguration",
           "s3:GetBucketRequestPayment",
           "s3:GetBucketLogging",
-          "s3:GetLifecycleConfiguration"
+          "s3:GetLifecycleConfiguration",
+          "s3:GetReplicationConfiguration"
         ],
         Resource = [
           "arn:aws:s3:::crispin-lab-terraform-states",
