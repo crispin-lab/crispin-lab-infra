@@ -183,7 +183,8 @@ module "github_actions_iam_policy" {
           "s3:GetBucketAcl",
           "s3:GetBucketCORS",
           "s3:GetBucketWebsite",
-          "s3:GetBucketVersioning"
+          "s3:GetBucketVersioning",
+          "s3:GetAccelerateConfiguration"
         ],
         Resource = [
           "arn:aws:s3:::crispin-lab-terraform-states",
@@ -216,7 +217,8 @@ module "github_actions_iam_policy" {
       {
         "Effect" : "Allow",
         "Action" : [
-          "dynamodb:DescribeTable"
+          "dynamodb:DescribeTable",
+          "dynamodb:DescribeContinuousBackups"
         ],
         "Resource" : "arn:aws:dynamodb:ap-northeast-2:${local.account_id}:table/terraform-locks"
       }
