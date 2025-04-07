@@ -8,6 +8,9 @@ resource "aws_kms_key" "this" {
   description             = var.kms_key_description
   deletion_window_in_days = var.kms_deletion_window_in_days
   enable_key_rotation     = var.kms_enable_key_rotation
+  tags = {
+    "Name" = "aws-s3-dynamodb-kms-key"
+  }
   policy = jsonencode({
     Version = "2012-10-17",
     Id      = "key-consolepolicy-3",
@@ -69,8 +72,8 @@ resource "aws_kms_key" "this" {
         "Effect" : "Allow",
         "Principal" : {
           "AWS" : [
-            "arn:aws:iam::711387100767:role/DevOps",
-            "arn:aws:iam::711387100767:role/GitHubActions"
+            "arn:aws:iam::${local.account_id}:role/DevOps",
+            "arn:aws:iam::${local.account_id}:role/GitHubActions"
           ]
         },
         "Action" : [
