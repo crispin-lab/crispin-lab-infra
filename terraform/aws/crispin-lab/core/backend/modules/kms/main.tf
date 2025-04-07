@@ -1,5 +1,9 @@
 data "aws_caller_identity" "current" {}
 
+locals {
+  account_id = sensitive(data.aws_caller_identity.current.account_id)
+}
+
 resource "aws_kms_key" "this" {
   description             = var.kms_key_description
   deletion_window_in_days = var.kms_deletion_window_in_days
@@ -12,7 +16,7 @@ resource "aws_kms_key" "this" {
         Sid    = "Enable IAM User Permissions",
         Effect = "Allow",
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+          AWS = "arn:aws:iam::${local.account_id}:root"
         },
         Action   = "kms:*",
         Resource = "*"
@@ -21,7 +25,7 @@ resource "aws_kms_key" "this" {
         Sid    = "Allow access for Key Administrators",
         Effect = "Allow",
         Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps"
+          AWS = "arn:aws:iam::${local.account_id}:role/DevOps"
         },
         Action = [
           "kms:Create*",
@@ -47,8 +51,8 @@ resource "aws_kms_key" "this" {
         Effect = "Allow",
         Principal = {
           AWS = [
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+            "arn:aws:iam::${local.account_id}:role/DevOps",
+            "arn:aws:iam::${local.account_id}:role/GitHubActions"
           ]
         },
         Action = [

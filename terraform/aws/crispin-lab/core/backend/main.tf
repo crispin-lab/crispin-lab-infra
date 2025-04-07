@@ -9,6 +9,10 @@ terraform {
 
 data "aws_caller_identity" "current" {}
 
+locals {
+  account_id = sensitive(data.aws_caller_identity.current.account_id)
+}
+
 provider "aws" {
   region = var.default_aws_region
 }
@@ -28,8 +32,8 @@ module "terraform_state_bucket" {
         Effect = "Allow"
         Principal = {
           AWS = [
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+            "arn:aws:iam::${local.account_id}:role/DevOps",
+            "arn:aws:iam::${local.account_id}:role/GitHubActions"
           ]
         }
         Action = [
@@ -55,8 +59,8 @@ module "terraform_state_bucket" {
         Condition = {
           StringNotEquals = {
             "aws:PrincipalArn" : [
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+              "arn:aws:iam::${local.account_id}:role/DevOps",
+              "arn:aws:iam::${local.account_id}:role/GitHubActions"
             ]
           }
         }
@@ -78,8 +82,8 @@ module "terraform_state_log_bucket" {
         Effect = "Allow"
         Principal = {
           AWS = [
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+            "arn:aws:iam::${local.account_id}:role/DevOps",
+            "arn:aws:iam::${local.account_id}:role/GitHubActions"
           ]
         }
         Action = [
@@ -105,8 +109,8 @@ module "terraform_state_log_bucket" {
         Condition = {
           StringNotEquals = {
             "aws:PrincipalArn" : [
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/DevOps",
-              "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/GitHubActions"
+              "arn:aws:iam::${local.account_id}:role/DevOps",
+              "arn:aws:iam::${local.account_id}:role/GitHubActions"
             ]
           }
         }
