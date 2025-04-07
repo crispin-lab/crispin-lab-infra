@@ -180,7 +180,8 @@ module "github_actions_iam_policy" {
         Effect = "Allow",
         Action = [
           "s3:GetBucketPolicy",
-          "s3:GetBucketAcl"
+          "s3:GetBucketAcl",
+          "s3:GetBucketCORS"
         ],
         Resource = [
           "arn:aws:s3:::crispin-lab-terraform-states",
@@ -204,7 +205,8 @@ module "github_actions_iam_policy" {
       {
         Effect = "Allow",
         Action = [
-          "kms:GetKeyPolicy"
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus"
         ],
         Resource = "arn:aws:kms:ap-northeast-2:${local.account_id}:key/*"
       }
