@@ -144,9 +144,9 @@ jobs:
           while [ $attempt -le $MAX_RETRIES ]; do
             echo "Attempt $attempt of $MAX_RETRIES"
           
-            terraform plan -no-color -out=tfplan 2>&1 | tee tf-plan.txt
+            terraform plan -no-color -out=tfplan 2>&1 | sed 's/[0-9]\{12\}/[REDACTED]/g' | tee tf-plan.txt
           
-            terraform apply -no-color tfplan 2>&1 | tee tf-apply.txt
+            terraform apply -no-color tfplan 2>&1 | sed 's/[0-9]\{12\}/[REDACTED]/g' | tee tf-apply.txt
             APPLY_EXIT_CODE=${PIPESTATUS[0]}
           
             if [ $APPLY_EXIT_CODE -eq 0 ]; then
