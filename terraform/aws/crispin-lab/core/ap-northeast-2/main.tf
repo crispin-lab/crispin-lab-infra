@@ -175,6 +175,31 @@ module "github_actions_iam_policy" {
         Resource = [
           "arn:aws:iam::${local.account_id}:role/GitHubActions"
         ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetBucketPolicy",
+          "kms:GetKeyPolicy"
+        ],
+        Resource = [
+          "arn:aws:s3:::crispin-lab-terraform-states",
+          "arn:aws:s3:::crispin-lab-terraform-states-logging",
+        ]
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ],
+        Resource = "arn:aws:kms:ap-northeast-2:${local.account_id}:key/*",
+        Condition = {
+          StringEquals = {
+            "kms:ResourceTag/Name" = "aws-s3-dynamodb-kms-key"
+          }
+        }
       }
     ]
   })
