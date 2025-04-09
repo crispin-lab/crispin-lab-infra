@@ -275,7 +275,7 @@ module "vpc_flow_log_role" {
 
 module "vpc_flow_log_role_policy" {
   source                 = "./modules/iam-policy"
-  iam_policy_description = ""
+  iam_policy_description = "IAM policy attached to resources"
   iam_policy_name        = "${module.crispin-lab-vpc.name_prefix}-vpc-flow-log-policy"
   iam_policy = jsonencode({
     Version = "2012-10-17"
