@@ -1,9 +1,9 @@
 output "id" {
-  description = ""
+  description = "Id of the VPC"
   value       = aws_vpc.this.id
 }
 
 output "name_prefix" {
-  description = ""
+  description = "Prefix name of the VPC"
   value       = aws_vpc.this.tags["Name"]
 }
