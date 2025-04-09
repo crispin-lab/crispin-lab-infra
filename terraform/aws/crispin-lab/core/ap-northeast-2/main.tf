@@ -241,3 +241,105 @@ module "iam_role_policy_attachment" {
   iam_role_name  = "GitHubActions"
   iam_policy_arn = module.github_actions_iam_policy.policy_arn
 }
+
+module "crispin-lab-vpc" {
+  source = "./modules/vpc"
+  vpc_tags = {
+    Name = "crispin-lab-vpc"
+  }
+}
+
+module "cloudwatch_log_group" {
+  source         = "./modules/cloudwatch"
+  log_group_name = "/aws/vpc/${module.crispin-lab-vpc.name_prefix}-flow-logs"
+  retention_days = 7
+  kms_key_id     = module.ap_northeast_2_kms_key.id
+}
+
+module "vpc_flow_log_role" {
+  source        = "./modules/iam-role"
+  iam_role_name = "${module.crispin-lab-vpc.name_prefix}-vpc-flow-log-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+module "vpc_flow_log_role_policy" {
+  source                 = "./modules/iam-policy"
+  iam_policy_description = ""
+  iam_policy_name        = "${module.crispin-lab-vpc.name_prefix}-vpc-flow-log-policy"
+  iam_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = module.cloudwatch_log_group.arn
+      },
+    ]
+  })
+}
+
+module "vpc_flow_log" {
+  source                    = "./modules/flow-log"
+  iam_role_arn              = module.vpc_flow_log_role.arn
+  flow_log_destination      = module.cloudwatch_log_group.arn
+  flow_log_destination_type = "cloud-watch-logs"
+  vpc_id                    = module.crispin-lab-vpc.id
+}
+
+module "ap_northeast_2_kms_key" {
+  source = "./modules/kms"
+  kms_key_tags = {
+    "Name" = "ap-northeast-2-kms-key"
+  }
+  kms_key_description = "Default KMS key"
+  kms_key_policy = jsonencode({
+    Version = "2012-10-17"
+    Id      = "CloudWatch-KMS-Key-Policy"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${local.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow CloudWatch to use the key"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.default_aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.default_aws_region}:${local.account_id}:*"
+          }
+        }
+      }
+    ]
+  })
+}
