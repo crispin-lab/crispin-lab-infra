@@ -367,12 +367,6 @@ module "vpc_flow_log_role_policy" {
   })
 }
 
-module "vpc_flow_log_role_policy_attachment" {
-  source         = "./modules/iam-attachment"
-  iam_role_name  = module.vpc_flow_log_role.name
-  iam_policy_arn = module.github_actions_iam_policy.policy_arn
-}
-
 module "vpc_flow_log" {
   source                    = "./modules/flow-log"
   iam_role_arn              = module.vpc_flow_log_role.arn

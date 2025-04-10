@@ -29,7 +29,6 @@
 | <a name="module_vpc_flow_log"></a> [vpc\_flow\_log](#module\_vpc\_flow\_log) | ./modules/flow-log | n/a |
 | <a name="module_vpc_flow_log_role"></a> [vpc\_flow\_log\_role](#module\_vpc\_flow\_log\_role) | ./modules/iam-role | n/a |
 | <a name="module_vpc_flow_log_role_policy"></a> [vpc\_flow\_log\_role\_policy](#module\_vpc\_flow\_log\_role\_policy) | ./modules/iam-policy | n/a |
-| <a name="module_vpc_flow_log_role_policy_attachment"></a> [vpc\_flow\_log\_role\_policy\_attachment](#module\_vpc\_flow\_log\_role\_policy\_attachment) | ./modules/iam-attachment | n/a |
 
 ## Resources
 
