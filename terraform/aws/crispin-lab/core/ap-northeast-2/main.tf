@@ -132,11 +132,13 @@ module "github_actions_iam_policy" {
           "iam:DetachRolePolicy",
           "iam:ListAttachedRolePolicies",
           "iam:ListRolePolicies",
-          "iam:TagRole"
+          "iam:TagRole",
+          "iam:ListPolicyVersions"
         ]
         Resource = [
           "arn:aws:iam::${local.account_id}:role/Developer",
-          "arn:aws:iam::${local.account_id}:role/DevOps"
+          "arn:aws:iam::${local.account_id}:role/DevOps",
+          "arn:aws:iam::${local.account_id}:role/VpcFlowLog"
         ]
       },
       {
@@ -316,7 +318,7 @@ module "cloudwatch_log_group" {
 
 module "vpc_flow_log_role" {
   source        = "./modules/iam-role"
-  iam_role_name = "${module.crispin-lab-vpc.name_prefix}-vpc-flow-log-role"
+  iam_role_name = "VpcFlowLog"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
