@@ -313,7 +313,7 @@ module "cloudwatch_log_group" {
   source         = "./modules/cloudwatch"
   log_group_name = "/aws/vpc/${module.crispin-lab-vpc.name_prefix}-flow-logs"
   retention_days = 7
-  kms_key_id     = module.ap_northeast_2_kms_key.id
+  kms_key_id     = module.ap_northeast_2_kms_key.arn
 }
 
 module "vpc_flow_log_role" {
