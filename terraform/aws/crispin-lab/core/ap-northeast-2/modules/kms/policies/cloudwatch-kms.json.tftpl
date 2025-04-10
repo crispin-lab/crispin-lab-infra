@@ -1,20 +1,35 @@
 {
   "Version": "2012-10-17",
+  "Id": "CloudWatch-KMS-Key-Policy",
   "Statement": [
     {
-      "Sid": "Allow CW Logs to use the key",
+      "Sid": "Enable IAM User Permissions",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::${account_id}:root"
+      },
+      "Action": "kms:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "Allow CloudWatch to use the key",
       "Effect": "Allow",
       "Principal": {
         "Service": "logs.ap-northeast-2.amazonaws.com"
       },
       "Action": [
-        "kms:Encrypt*",
-        "kms:Decrypt*",
+        "kms:Encrypt",
+        "kms:Decrypt",
         "kms:ReEncrypt*",
         "kms:GenerateDataKey*",
         "kms:DescribeKey"
       ],
-      "Resource": "*"
+      "Resource": "*",
+      "Condition": {
+        "ArnLike": {
+          "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:ap-northeast-2:${account_id}:*"
+        }
+      }
     }
   ]
 }

@@ -66,7 +66,7 @@ module "github_actions_iam_policy" {
   iam_policy_description = "Required IAM permissions for GitHub Actions"
   iam_policy = templatefile(
     "${path.root}/modules/iam-policy/policies/github-actions.json.tftpl",
-    {}
+    { account_id = local.account_id }
   )
 }
 
@@ -84,7 +84,7 @@ module "ap_northeast_2_kms_key" {
   }
   kms_key_policy = templatefile(
     "${path.root}/modules/kms/policies/cloudwatch-kms.json.tftpl",
-    {}
+    { account_id = local.account_id }
   )
 }
 
