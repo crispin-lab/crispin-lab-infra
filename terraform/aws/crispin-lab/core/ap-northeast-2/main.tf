@@ -291,6 +291,16 @@ module "github_actions_iam_policy" {
           "kms:ListAliases"
         ],
         "Resource" : "*"
+      },
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:CreateLogGroup",
+          "logs:PutRetentionPolicy"
+        ],
+        "Resource" : "*"
       }
     ]
   })
