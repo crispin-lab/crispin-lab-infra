@@ -298,7 +298,8 @@ module "github_actions_iam_policy" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
           "logs:CreateLogGroup",
-          "logs:PutRetentionPolicy"
+          "logs:PutRetentionPolicy",
+          "logs:ListTagsForResource"
         ],
         "Resource" : "*"
       }
