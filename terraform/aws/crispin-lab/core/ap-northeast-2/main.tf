@@ -231,6 +231,64 @@ module "github_actions_iam_policy" {
           "dynamodb:ListTagsOfResource"
         ],
         "Resource" : "arn:aws:dynamodb:ap-northeast-2:${local.account_id}:table/terraform-locks"
+      },
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "ec2:CreateVpc",
+          "ec2:DeleteVpc",
+          "ec2:CreateSubnet",
+          "ec2:DeleteSubnet",
+          "ec2:CreateRouteTable",
+          "ec2:DeleteRouteTable",
+          "ec2:CreateRoute",
+          "ec2:DeleteRoute",
+          "ec2:CreateInternetGateway",
+          "ec2:DeleteInternetGateway",
+          "ec2:AttachInternetGateway",
+          "ec2:DetachInternetGateway",
+          "ec2:CreateNatGateway",
+          "ec2:DeleteNatGateway",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:AssociateRouteTable",
+          "ec2:DisassociateRouteTable",
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeRouteTables",
+          "ec2:DescribeInternetGateways",
+          "ec2:DescribeNatGateways",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribeVpcAttribute",
+          "ec2:DescribeAddresses",
+          "ec2:AllocateAddress",
+          "ec2:ReleaseAddress"
+        ],
+        "Resource" : "*"
+      },
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "kms:CreateKey",
+          "kms:ScheduleKeyDeletion",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:EnableKeyRotation",
+          "kms:DisableKeyRotation",
+          "kms:PutKeyPolicy",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:UpdateAlias",
+          "kms:DescribeKey",
+          "kms:ListAliases"
+        ],
+        "Resource" : "*"
       }
     ]
   })
@@ -273,10 +331,27 @@ module "vpc_flow_log_role" {
   })
 }
 
+resource "aws_iam_role" "vpc_flow_log_role" {
+  name = "vpc-flow-log-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "vpc-flow-logs.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
 module "vpc_flow_log_role_policy" {
   source                 = "./modules/iam-policy"
   iam_policy_description = "IAM policy attached to resources"
-  iam_policy_name        = "${module.crispin-lab-vpc.name_prefix}-vpc-flow-log-policy"
+  iam_policy_name        = "VpcFlowLogPermissions"
   iam_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -291,6 +366,12 @@ module "vpc_flow_log_role_policy" {
       },
     ]
   })
+}
+
+module "vpc_flow_log_role_policy_attachment" {
+  source         = "./modules/iam-attachment"
+  iam_role_name  = module.vpc_flow_log_role.name
+  iam_policy_arn = module.github_actions_iam_policy.policy_arn
 }
 
 module "vpc_flow_log" {
