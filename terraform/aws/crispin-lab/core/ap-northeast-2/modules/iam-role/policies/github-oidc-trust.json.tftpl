@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "${github_oidc_provider_arn}"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:crispin-lab/crispin-lab-be:*",
+            "repo:crispin-lab/crispin-lab-fe:*",
+            "repo:crispin-lab/crispin-lab-infra:*"
+          ]
+        }
+      }
+    }
+  ]
+}
