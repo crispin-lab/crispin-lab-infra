@@ -270,7 +270,10 @@ module "github_actions_iam_policy" {
           "ec2:DescribeVpcAttribute",
           "ec2:DescribeAddresses",
           "ec2:AllocateAddress",
-          "ec2:ReleaseAddress"
+          "ec2:ReleaseAddress",
+          "ec2:DescribeFlowLogs",
+          "ec2:CreateFlowLogs",
+          "ec2:DeleteFlowLogs"
         ],
         "Resource" : "*"
       },
