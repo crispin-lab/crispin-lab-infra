@@ -7,14 +7,14 @@ terraform {
   }
 }
 
+provider "aws" {
+  region = var.default_aws_region
+}
+
 data "aws_caller_identity" "current" {}
 
 locals {
-  account_id = sensitive(data.aws_caller_identity.current.account_id)
-}
-
-provider "aws" {
-  region = var.default_aws_region
+  account_id = data.aws_caller_identity.current.account_id
 }
 
 module "devops_user" {
@@ -28,45 +28,22 @@ module "developer_user" {
 }
 
 module "devops_role" {
-  source        = "./modules/iam-role"
-  iam_role_name = "DevOps"
-  assume_role_policy = jsonencode(
-    {
-      Statement = [
-        {
-          Action = "sts:AssumeRole"
-          Effect = "Allow"
-          Principal = {
-            AWS = "arn:aws:iam::${local.account_id}:user/crispin"
-          }
-          Sid = "DevOpsSts"
-        },
-      ]
-      Version = "2012-10-17"
-    }
-  )
+  source               = "./modules/iam-role"
+  iam_role_name        = "DevOps"
   max_session_duration = 28800
+  assume_role_policy = templatefile(
+    "${path.root}/modules/iam-role/policies/devops-trust.json.tftpl",
+  { account_id = local.account_id })
 }
 
 module "developer_role" {
-  source        = "./modules/iam-role"
-  iam_role_name = "Developer"
-  assume_role_policy = jsonencode(
-    {
-      Statement = [
-        {
-          Action = "sts:AssumeRole"
-          Effect = "Allow"
-          Principal = {
-            AWS = "arn:aws:iam::${local.account_id}:user/dev_crispin"
-          }
-          Sid = "DeveloperSts"
-        },
-      ]
-      Version = "2012-10-17"
-    }
-  )
+  source               = "./modules/iam-role"
+  iam_role_name        = "Developer"
   max_session_duration = 43200
+  assume_role_policy = templatefile(
+    "${path.root}/modules/iam-role/policies/developer-trust.json.tftpl",
+    { account_id = local.account_id }
+  )
 }
 
 module "github_oidc_provider" {
@@ -74,246 +51,41 @@ module "github_oidc_provider" {
 }
 
 module "github_actions_role" {
-  source        = "./modules/iam-role"
-  iam_role_name = "GitHubActions"
-  assume_role_policy = jsonencode({
-    Statement = [
-      {
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Effect = "Allow"
-        Principal = {
-          Federated = module.github_oidc_provider.arn
-        }
-        Condition = {
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          }
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = [
-              "repo:crispin-lab/crispin-lab-be:*",
-              "repo:crispin-lab/crispin-lab-fe:*",
-              "repo:crispin-lab/crispin-lab-infra:*",
-            ]
-          }
-        }
-      }
-    ]
-    Version = "2012-10-17"
-  })
+  source               = "./modules/iam-role"
+  iam_role_name        = "GitHubActions"
   max_session_duration = 3600
+  assume_role_policy = templatefile(
+    "${path.root}/modules/iam-role/policies/github-oidc-trust.json.tftpl",
+    { github_oidc_provider_arn = module.github_oidc_provider.arn }
+  )
 }
 
 module "github_actions_iam_policy" {
   source                 = "./modules/iam-policy"
   iam_policy_name        = "GitHubActionsIAMPermissions"
   iam_policy_description = "Required IAM permissions for GitHub Actions"
-  iam_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetOpenIDConnectProvider",
-          "iam:CreateOpenIDConnectProvider",
-          "iam:DeleteOpenIDConnectProvider",
-          "iam:TagOpenIDConnectProvider"
-        ]
-        Resource = "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole",
-          "iam:CreateRole",
-          "iam:DeleteRole",
-          "iam:PutRolePolicy",
-          "iam:GetRolePolicy",
-          "iam:AttachRolePolicy",
-          "iam:DetachRolePolicy",
-          "iam:ListAttachedRolePolicies",
-          "iam:ListRolePolicies",
-          "iam:TagRole",
-          "iam:ListPolicyVersions"
-        ]
-        Resource = [
-          "arn:aws:iam::${local.account_id}:role/Developer",
-          "arn:aws:iam::${local.account_id}:role/DevOps",
-          "arn:aws:iam::${local.account_id}:role/VpcFlowLog"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetUser",
-          "iam:CreateUser",
-          "iam:DeleteUser",
-          "iam:TagUser",
-          "iam:PutUserPolicy",
-          "iam:AttachUserPolicy",
-          "iam:DetachUserPolicy"
-        ]
-        Resource = [
-          "arn:aws:iam::${local.account_id}:user/dev_crispin",
-          "arn:aws:iam::${local.account_id}:user/crispin"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:ListPolicies",
-          "iam:GetPolicy",
-          "iam:GetPolicyVersion"
-        ]
-        Resource = "arn:aws:iam::${local.account_id}:policy/*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:GetRole",
-          "iam:GetRolePolicy",
-          "iam:ListAttachedRolePolicies",
-          "iam:ListRolePolicies"
-        ]
-        Resource = [
-          "arn:aws:iam::${local.account_id}:role/GitHubActions"
-        ]
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "s3:GetBucketPolicy",
-          "s3:GetBucketAcl",
-          "s3:GetBucketCORS",
-          "s3:GetBucketWebsite",
-          "s3:GetBucketVersioning",
-          "s3:GetAccelerateConfiguration",
-          "s3:GetBucketRequestPayment",
-          "s3:GetBucketLogging",
-          "s3:GetLifecycleConfiguration",
-          "s3:GetReplicationConfiguration",
-          "s3:GetEncryptionConfiguration",
-          "s3:GetBucketObjectLockConfiguration",
-          "s3:GetBucketTagging",
-          "s3:GetBucketPublicAccessBlock"
-        ],
-        Resource = [
-          "arn:aws:s3:::crispin-lab-terraform-states",
-          "arn:aws:s3:::crispin-lab-terraform-states-logging"
-        ]
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:GenerateDataKey"
-        ],
-        Resource = "arn:aws:kms:ap-northeast-2:${local.account_id}:key/*",
-        Condition = {
-          StringEquals = {
-            "kms:ResourceTag/Name" = "aws-s3-dynamodb-kms-key"
-          }
-        }
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "kms:GetKeyPolicy",
-          "kms:GetKeyRotationStatus",
-          "kms:ListResourceTags",
-        ],
-        Resource = "arn:aws:kms:ap-northeast-2:${local.account_id}:key/*"
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : [
-          "dynamodb:DescribeTable",
-          "dynamodb:DescribeContinuousBackups",
-          "dynamodb:DescribeTimeToLive",
-          "dynamodb:ListTagsOfResource"
-        ],
-        "Resource" : "arn:aws:dynamodb:ap-northeast-2:${local.account_id}:table/terraform-locks"
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : [
-          "ec2:CreateVpc",
-          "ec2:DeleteVpc",
-          "ec2:CreateSubnet",
-          "ec2:DeleteSubnet",
-          "ec2:CreateRouteTable",
-          "ec2:DeleteRouteTable",
-          "ec2:CreateRoute",
-          "ec2:DeleteRoute",
-          "ec2:CreateInternetGateway",
-          "ec2:DeleteInternetGateway",
-          "ec2:AttachInternetGateway",
-          "ec2:DetachInternetGateway",
-          "ec2:CreateNatGateway",
-          "ec2:DeleteNatGateway",
-          "ec2:CreateSecurityGroup",
-          "ec2:DeleteSecurityGroup",
-          "ec2:AuthorizeSecurityGroupIngress",
-          "ec2:AuthorizeSecurityGroupEgress",
-          "ec2:RevokeSecurityGroupIngress",
-          "ec2:RevokeSecurityGroupEgress",
-          "ec2:AssociateRouteTable",
-          "ec2:DisassociateRouteTable",
-          "ec2:CreateTags",
-          "ec2:DeleteTags",
-          "ec2:DescribeVpcs",
-          "ec2:DescribeSubnets",
-          "ec2:DescribeRouteTables",
-          "ec2:DescribeInternetGateways",
-          "ec2:DescribeNatGateways",
-          "ec2:DescribeSecurityGroups",
-          "ec2:DescribeVpcAttribute",
-          "ec2:DescribeAddresses",
-          "ec2:AllocateAddress",
-          "ec2:ReleaseAddress",
-          "ec2:DescribeFlowLogs",
-          "ec2:CreateFlowLogs",
-          "ec2:DeleteFlowLogs"
-        ],
-        "Resource" : "*"
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : [
-          "kms:CreateKey",
-          "kms:ScheduleKeyDeletion",
-          "kms:TagResource",
-          "kms:UntagResource",
-          "kms:EnableKeyRotation",
-          "kms:DisableKeyRotation",
-          "kms:PutKeyPolicy",
-          "kms:CreateAlias",
-          "kms:DeleteAlias",
-          "kms:UpdateAlias",
-          "kms:DescribeKey",
-          "kms:ListAliases"
-        ],
-        "Resource" : "*"
-      },
-      {
-        "Effect" : "Allow",
-        "Action" : [
-          "logs:DescribeLogGroups",
-          "logs:DescribeLogStreams",
-          "logs:CreateLogGroup",
-          "logs:PutRetentionPolicy",
-          "logs:ListTagsForResource"
-        ],
-        "Resource" : "*"
-      }
-    ]
-  })
+  iam_policy = templatefile(
+    "${path.root}/modules/iam-policy/policies/github-actions.json.tftpl",
+    {}
+  )
 }
 
 module "iam_role_policy_attachment" {
   source         = "./modules/iam-attachment"
   iam_role_name  = "GitHubActions"
   iam_policy_arn = module.github_actions_iam_policy.policy_arn
+}
+
+module "ap_northeast_2_kms_key" {
+  source              = "./modules/kms"
+  kms_key_description = "Default KMS key"
+  kms_key_tags = {
+    Name = "ap-northeast-2-kms-key"
+  }
+  kms_key_policy = templatefile(
+    "${path.root}/modules/kms/policies/cloudwatch-kms.json.tftpl",
+    {}
+  )
 }
 
 module "crispin-lab-vpc" {
@@ -333,38 +105,20 @@ module "cloudwatch_log_group" {
 module "vpc_flow_log_role" {
   source        = "./modules/iam-role"
   iam_role_name = "VpcFlowLog"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "vpc-flow-logs.amazonaws.com"
-        }
-      }
-    ]
-  })
+  assume_role_policy = templatefile(
+    "${path.root}/modules/iam-role/policies/flow-log-trust.json.tftpl",
+    {}
+  )
 }
 
 module "vpc_flow_log_role_policy" {
   source                 = "./modules/iam-policy"
-  iam_policy_description = "IAM policy attached to resources"
   iam_policy_name        = "VpcFlowLogPermissions"
-  iam_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = module.cloudwatch_log_group.arn
-      },
-    ]
-  })
+  iam_policy_description = "Flow log policy"
+  iam_policy = templatefile(
+    "${path.module}/modules/iam-policy/policies/flow-log.json.tftpl",
+    {}
+  )
 }
 
 module "vpc_flow_log" {
@@ -373,47 +127,4 @@ module "vpc_flow_log" {
   flow_log_destination      = module.cloudwatch_log_group.arn
   flow_log_destination_type = "cloud-watch-logs"
   vpc_id                    = module.crispin-lab-vpc.id
-}
-
-module "ap_northeast_2_kms_key" {
-  source = "./modules/kms"
-  kms_key_tags = {
-    "Name" = "ap-northeast-2-kms-key"
-  }
-  kms_key_description = "Default KMS key"
-  kms_key_policy = jsonencode({
-    Version = "2012-10-17"
-    Id      = "CloudWatch-KMS-Key-Policy"
-    Statement = [
-      {
-        Sid    = "Enable IAM User Permissions"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${local.account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      {
-        Sid    = "Allow CloudWatch to use the key"
-        Effect = "Allow"
-        Principal = {
-          Service = "logs.${var.default_aws_region}.amazonaws.com"
-        }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-        Condition = {
-          ArnLike = {
-            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.default_aws_region}:${local.account_id}:*"
-          }
-        }
-      }
-    ]
-  })
 }
