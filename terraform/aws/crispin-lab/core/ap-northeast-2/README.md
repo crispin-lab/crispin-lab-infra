@@ -18,8 +18,10 @@
 | <a name="module_ap_northeast_2_kms_key"></a> [ap\_northeast\_2\_kms\_key](#module\_ap\_northeast\_2\_kms\_key) | ./modules/kms | n/a |
 | <a name="module_cloudwatch_log_group"></a> [cloudwatch\_log\_group](#module\_cloudwatch\_log\_group) | ./modules/cloudwatch | n/a |
 | <a name="module_crispin-lab-vpc"></a> [crispin-lab-vpc](#module\_crispin-lab-vpc) | ./modules/vpc | n/a |
+| <a name="module_developer_iam_user_policy"></a> [developer\_iam\_user\_policy](#module\_developer\_iam\_user\_policy) | ./modules/iam-user-policy | n/a |
 | <a name="module_developer_role"></a> [developer\_role](#module\_developer\_role) | ./modules/iam-role | n/a |
 | <a name="module_developer_user"></a> [developer\_user](#module\_developer\_user) | ./modules/iam-user | n/a |
+| <a name="module_devops_iam_user_policy"></a> [devops\_iam\_user\_policy](#module\_devops\_iam\_user\_policy) | ./modules/iam-user-policy | n/a |
 | <a name="module_devops_role"></a> [devops\_role](#module\_devops\_role) | ./modules/iam-role | n/a |
 | <a name="module_devops_user"></a> [devops\_user](#module\_devops\_user) | ./modules/iam-user | n/a |
 | <a name="module_github_actions_iam_policy"></a> [github\_actions\_iam\_policy](#module\_github\_actions\_iam\_policy) | ./modules/iam-policy | n/a |
