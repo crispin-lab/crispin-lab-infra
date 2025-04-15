@@ -56,7 +56,10 @@ module "github_actions_role" {
   max_session_duration = 3600
   assume_role_policy = templatefile(
     "${path.root}/modules/iam-role/policies/github-oidc-trust.json.tftpl",
-    { github_oidc_provider_arn = module.github_oidc_provider.arn }
+    {
+      account_id               = local.account_id,
+      github_oidc_provider_arn = module.github_oidc_provider.arn
+    }
   )
 }
 
@@ -84,6 +87,24 @@ module "ap_northeast_2_kms_key" {
   }
   kms_key_policy = templatefile(
     "${path.root}/modules/kms/policies/cloudwatch-kms.json.tftpl",
+    { account_id = local.account_id }
+  )
+}
+
+module "devops_iam_user_policy" {
+  source               = "./modules/iam-user-policy"
+  iam_user_policy_user = module.devops_user.name
+  iam_user_policy = templatefile(
+    "${path.root}/modules/iam-user-policy/policies/devops.json.tftpl",
+    { account_id = local.account_id }
+  )
+}
+
+module "developer_iam_user_policy" {
+  source               = "./modules/iam-user-policy"
+  iam_user_policy_user = module.developer_user.name
+  iam_user_policy = templatefile(
+    "${path.root}/modules/iam-user-policy/policies/developer.json.tftpl",
     { account_id = local.account_id }
   )
 }
