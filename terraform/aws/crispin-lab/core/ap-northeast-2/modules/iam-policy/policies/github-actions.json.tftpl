@@ -41,7 +41,8 @@
         "iam:TagUser",
         "iam:PutUserPolicy",
         "iam:AttachUserPolicy",
-        "iam:DetachUserPolicy"
+        "iam:DetachUserPolicy",
+        "iam:GetUserPolicy"
       ],
       "Resource": [
         "arn:aws:iam::${account_id}:user/dev_crispin",
@@ -63,8 +64,7 @@
         "iam:GetRole",
         "iam:GetRolePolicy",
         "iam:ListAttachedRolePolicies",
-        "iam:ListRolePolicies",
-        "iam:GetUserPolicy"
+        "iam:ListRolePolicies"
       ],
       "Resource": [
         "arn:aws:iam::${account_id}:role/GitHubActions"
