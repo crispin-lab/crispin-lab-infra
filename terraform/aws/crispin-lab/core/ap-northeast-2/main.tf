@@ -149,3 +149,13 @@ module "vpc_flow_log" {
   flow_log_destination_type = "cloud-watch-logs"
   vpc_id                    = module.crispin-lab-vpc.id
 }
+
+module "private_subnet" {
+  source                   = "./modules/subnet"
+  vpc_id                   = module.crispin-lab-vpc.id
+  subnet_availability_zone = "ap-northeast-2a"
+  subnet_cidr_block        = "10.0.1.0/24"
+  subnet_tags = {
+    Name = "crispin-lab-ap-ne-2a-private-subnet"
+  }
+}
